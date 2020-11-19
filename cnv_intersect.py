@@ -223,8 +223,11 @@ def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
     if invalid:
         raise ValueError("ERROR: Invalid CNV types specified: {}".format(
             ", ".join(invalid)))
+    pedfile = None
+    if ped is not None:
+        pedfile = PedFile(ped)
     for cnv_type in cnv_types:
-        cnv_readers = [CnvVcf(x, cnv_type=cnv_type, ped=ped) for x in vcfs]
+        cnv_readers = [CnvVcf(x, cnv_type=cnv_type, ped=pedfile) for x in vcfs]
         contig_order = check_contig_order(cnv_readers)
         cnvs = []
         for cr in cnv_readers:
