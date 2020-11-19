@@ -115,15 +115,13 @@ class CnvVcf(object):
             # add contiguous records to buffer
             if self.buffer:
                 for record in self.vcf:
-                    if record.chrom != self.buffer[-1].chrom:
-                        break
-                    if record.start < self.buffer[-1].stop and \
-                            self.record_matches_type(record):
+                    if record.start < self.buffer[-1].stop \
+                       and record.chrom == self.buffer[-1].chrom \
+                       and self.record_matches_type(record):
                         self.buffer.append(record)
                     else:
+                        self.next_record = record
                         break
-            if record is not None:
-                self.next_record = record
         except StopIteration:
             pass
         if not self.buffer:
