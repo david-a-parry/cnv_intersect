@@ -122,7 +122,8 @@ class CnvVcf(object):
                         self.buffer.append(record)
                     else:
                         break
-            self.next_record = record
+            if record is not None:
+                self.next_record = record
         except StopIteration:
             pass
         if not self.buffer:
