@@ -82,9 +82,9 @@ class CnvVcf(object):
         self.next_record = None
         self.buffer = []
         if self.ped:
-            self.affected = [x for x in self.header.samples if x in
+            self.affected = [x for x in self.vcf.header.samples if x in
                              self.ped.get_affected]
-            self.unaffected = [x for x in self.header.samples if x in
+            self.unaffected = [x for x in self.vcf.header.samples if x in
                                self.ped.get_unaffected]
             if not self.affected:
                 raise ValueError("None of the specified affected samples " +
