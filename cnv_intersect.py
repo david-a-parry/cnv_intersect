@@ -166,9 +166,6 @@ class CnvVcf(object):
         return False
 
 
-
-
-
 def get_argparser():
     parser = argparse.ArgumentParser(
         usage='%(prog)s [options] VCF VCF [VCF ...]',
