@@ -206,7 +206,7 @@ def get_contig_order(vcf):
         prev_contig = record.chrom
         prev_pos = record.pos
     vcf.reset()
-    return dict((k, n) for n, k in enumereate(contigs))
+    return dict((k, n) for n, k in enumerate(contigs))
 
 
 def check_contig_order(cnv_readers):
