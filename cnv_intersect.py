@@ -83,9 +83,9 @@ class CnvVcf(object):
         self.buffer = []
         if self.ped:
             self.affected = [x for x in self.vcf.header.samples if x in
-                             self.ped.get_affected]
+                             self.ped.get_affected()]
             self.unaffected = [x for x in self.vcf.header.samples if x in
-                               self.ped.get_unaffected]
+                               self.ped.get_unaffected()]
             if not self.affected:
                 raise ValueError("None of the specified affected samples " +
                                  "from {} were found in VCF {}".format(
@@ -158,8 +158,10 @@ class CnvVcf(object):
                for s, p in zip(self.affected, ploidies)):
             if any(cnv_type_from_record(record, u) == self.cnv_type
                    for u, p in zip(self.unaffected, un_ploidies)):
-                max_cn_aff = max(record[s]['CN'] for s in self.affected)
-                min_cn_un = min(record[u]['CN'] for u in self.unaffected)
+                max_cn_aff = max(record.samples[s]['CN'] for s in
+                                 self.affected)
+                min_cn_un = min(record.samples[u]['CN'] for u in
+                                self.unaffected)
                 if max_cn_aff >= min_cn_un:
                     return False
             return True
