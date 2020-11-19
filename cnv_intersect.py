@@ -38,12 +38,13 @@ def cnv_type_from_record(record, sample, ploidy=2):
 class Cnv(object):
     ''' A contiguous CNV that may be made up of >1 VCF records.'''
 
-    def __init__(self, chrom, start, stop, cnv_type, records):
-        self.chrom = chrom
-        self.start = start
-        self.stop = stop
+    def __init__(self, cnv_type, records):
         self.cnv_type = cnv_type
         self.records = records
+        self.chrom = records[0].chrom
+        self.start = records[0].start
+        self.stop = records[-1].stop
+        assert(self.start < self.stop)
 
     def __str__(self):
         return "{}:{}-{}-{} ({} records)".format(self.chrom,
@@ -51,6 +52,7 @@ class Cnv(object):
                                                  self.stop,
                                                  self.cnv_type,
                                                  len(self.records))
+
 
 class CnvVcf(object):
     ''' A class for iterating over CNVs of the same type in a VCF where '''
@@ -125,10 +127,7 @@ class CnvVcf(object):
             pass
         if not self.buffer:
             raise StopIteration()
-        return Cnv(chrom=self.buffer[0].chrom,
-                   start=self.buffer[0].start,
-                   stop=self.buffer[-1].stop,
-                   cnv_type=self.cnv_type,
+        return Cnv(cnv_type=self.cnv_type,
                    records=self.buffer)
 
     def record_matches_type(self, record):
@@ -263,11 +262,12 @@ def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
                 if len(overlaps) >= min_intersect:
                     start = min(x.start for x in overlaps)
                     stop = max(x.stop for x in overlaps)
-                    logger.info("Overlapping {} at {}:{}-{}".format(
+                    logger.info("Overlapping {} at {}:{}-{} ({})".format(
                         cnv_type,
                         cnvs[0].chrom,
                         start,
-                        stop))
+                        stop,
+                        len(overlaps)))
                 #TODO Output CNV!
             for i in (x for x in range(len(cnvs)) if cnvs[x].stop == min_stop):
                 try:
