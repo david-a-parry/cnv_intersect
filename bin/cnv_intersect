@@ -92,7 +92,7 @@ def check_bed(bed_filter, cnv, fraction):
     for ovr in (x for x in overlaps if x.cnv_type == cnv.cnv_type):
         o_start = max(ovr.start, cnv.start)
         o_stop = min(ovr.stop, cnv.stop)
-        covered = float(cnv.length())/(o_stop - o_start)
+        covered = float(cnv.length)/(o_stop - o_start)
         if covered > fraction:
             return True
     return False
