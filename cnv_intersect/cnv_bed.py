@@ -66,13 +66,47 @@ class CnvBed(object):
             r.sort(key=attrgetter('start', 'stop'))
         return regions
 
-    def search(self, chrom, start, stop, cnv_type):
-        ''' Search for CNVs overlapping coordinates'''
-        raise NotImplementedError()
+    def search(self, cnv, match_type=True):
+        ''' Return list of CNVs overlapping Cnv object'''
+        if cnv.chrom not in self.cnvs:
+            return []
+        i = self._bin_search_cnvs(cnv)
+        matches = []
+        if i > -1:
+            for j in range(i - 1, -1, -1):
+                other = self.cnvs[cnv.chrom][j]
+                if cnv.overlaps(other):
+                    if not match_type or cnv.cnv_type == other.cnv_type:
+                        matches.insert(0, other)
+                else:
+                    break
+            for j in range(i, len(self.cnvs[cnv.chrom])):
+                other = self.cnvs[cnv.chrom][j]
+                if cnv.overlaps(other):
+                    if not match_type or cnv.cnv_type == other.cnv_type:
+                        matches.append(other)
+                else:
+                    break
+        return matches
+
+    def _bin_search_cnvs(self, cnv):
+        ''' Return array index of first overlapping cnv found in self.cnvs'''
+        others = self.cnvs[cnv.chrom]
+        low = 0
+        high = len(others) - 1
+        while low <= high:
+            i = (low + high) // 2
+            if cnv.overlaps(others[i]):
+                return i
+            elif cnv < others[i]:
+                high = i - 1
+            elif cnv > others[i]:
+                low = i + 1
+        return -1
 
     def walk(self, chrom, start, stop, cnv_type):
         '''
         Search for CNVs overlapping coordinates. Designed to be run
-        sequentially for multiple lookups performed in coordinate order.
+        sequentially for multiple look-ups performed in coordinate order.
         '''
         raise NotImplementedError()
