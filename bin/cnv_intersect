@@ -101,12 +101,12 @@ def check_contig_order(cnv_readers):
     return contig_order
 
 
-def check_bed(bed_filter, cnv, fraction):
-    overlaps = bed_filter.search(cnv)
-    for ovr in (x for x in overlaps if x.cnv_type == cnv.cnv_type):
-        o_start = max(ovr.start, cnv.start)
-        o_stop = min(ovr.stop, cnv.stop)
-        covered = float(cnv.length)/(o_stop - o_start)
+def check_bed(bed_filter, intersect, fraction):
+    overlaps = bed_filter.search(intersect)
+    for ovr in (x for x in overlaps if x.cnv_type == intersect.cnv_type):
+        o_start = max(ovr.start, intersect.intersect_start)
+        o_stop = min(ovr.stop, intersect.intersect_stop)
+        covered = float(intersect.intersect_length)/(o_stop - o_start)
         if covered > fraction:
             return True
     return False
