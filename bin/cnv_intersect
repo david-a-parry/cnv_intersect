@@ -115,8 +115,8 @@ def check_bed(bed_filter, cnv, fraction):
 def output_cnv(intersect):
     # TODO replace this placeholder function with something that writes VCFs
     print("\t".join(str(x) for x in (intersect.chrom,
-                                     intersect.start + 1,
-                                     intersect.stop,
+                                     intersect.intersect_start + 1,
+                                     intersect.intersect_stop,
                                      intersect.cnv_type,
                                      len(intersect.records),
                                      intersect.intersect_length)))
