@@ -1,6 +1,7 @@
 import logging
 import pysam
 import re
+from cnv_intersect.cnv import Cnv
 
 valid_cnv_types = ['LOSS', 'GAIN']
 autosome_re = re.compile(r"""^(chr)?(\d+)$""")
@@ -31,27 +32,21 @@ def cnv_type_from_record(record, sample, ploidy=2):
     return 'REF'
 
 
-class Cnv(object):
+class CnvFromVcf(Cnv):
     ''' A contiguous CNV that may be made up of >1 VCF records.'''
 
     def __init__(self, cnv_type, records):
         self.cnv_type = cnv_type
         self.records = records
-        self.chrom = records[0].chrom
-        self.start = records[0].start
-        self.stop = records[-1].stop
-        assert(self.start < self.stop)
-
-    def __str__(self):
-        return "{}:{}-{}-{} ({} records)".format(self.chrom,
-                                                 self.start,
-                                                 self.stop,
-                                                 self.cnv_type,
-                                                 len(self.records))
+        super().__init__(chrom=records[0].chrom,
+                         start=records[0].start,
+                         stop=records[-1].stop,
+                         cnv_type=cnv_type,
+                         records=records)
 
 
 class CnvVcf(object):
-    ''' A class for iterating over CNVs of the same type in a VCF where '''
+    ''' A class for iterating over CNVs of the same type in a VCF.'''
 
     def __init__(self, vcf, cnv_type='LOSS', ped=None):
         '''
@@ -122,8 +117,8 @@ class CnvVcf(object):
             pass
         if not self.buffer:
             raise StopIteration()
-        return Cnv(cnv_type=self.cnv_type,
-                   records=self.buffer)
+        return CnvFromVcf(cnv_type=self.cnv_type,
+                          records=self.buffer)
 
     def record_matches_type(self, record):
         '''
