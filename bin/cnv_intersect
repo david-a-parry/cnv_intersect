@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+import sys
+import argparse
+import logging
+from vase.ped_file import PedFile
+from cnv_intersect.cnv_vcf import CnvVcf, valid_cnv_types
+
+
+logger = logging.getLogger("CNV Intersect")
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter(
+    '[%(asctime)s] %(name)s - %(levelname)s - %(message)s')
+ch = logging.StreamHandler()
+ch.setLevel(logger.level)
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
+
+def get_argparser():
+    parser = argparse.ArgumentParser(
+        usage='%(prog)s [options] VCF VCF [VCF ...]',
+        description='Generate VCF of overlapping CNVs from Canvas called VCF')
+    parser.add_argument('vcfs', metavar='VCF', nargs='+',
+                        help='2 or more input VCF files with CNV calls.')
+    parser.add_argument('-p', '--ped', help='''PED file indicating which
+                        individuals are affected. If not provided all
+                        individuals in given VCFs are assumed to be
+                        affected.''')
+    parser.add_argument('-o', '--output', metavar='VCF/BCF output',
+                        help='''Output file for intersected calls. Default is
+                        STDOUT.''')
+    parser.add_argument('-m', '--min_intersect', default=2, type=int,
+                        metavar='N', help='''Minimum number of intersecting
+                        VCFs required in order to output CNV. Default=2.''')
+    parser.add_argument('-t', '--cnv_types', default=['LOSS', 'GAIN'],
+                        nargs='+', help='''CNV types to identify. Valid values
+                        are "LOSS" or "GAIN".''')
+    return parser
+
+
+def get_contig_order(vcf):
+    if vcf.index is not None:
+        return dict(vcf.index)
+    contigs = []
+    prev_contig = None
+    prev_pos = None
+    not_sorted_err = ValueError("Input file '{}' is not sorted ".format(vcf) +
+                                "- exiting!")
+    for record in vcf:
+        if record.chrom not in contigs:
+            contigs.append(record.chrom)
+        elif prev_contig is not None and record.chrom != prev_contig:
+            raise not_sorted_err
+        elif prev_pos is not None and prev_pos > record.pos:
+            raise not_sorted_err
+        prev_contig = record.chrom
+        prev_pos = record.pos
+    vcf.reset()
+    return dict((k, n) for n, k in enumerate(contigs))
+
+
+def check_contig_order(cnv_readers):
+    contig_order = get_contig_order(cnv_readers[0].vcf)
+    for cr in cnv_readers[1:]:
+        if get_contig_order(cr.vcf) != contig_order:
+            raise ValueError("Input VCFs do not share the same contig order!")
+    return contig_order
+
+
+def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
+         min_intersect=2):
+    invalid = set(cnv_types).difference(valid_cnv_types)
+    if invalid:
+        raise ValueError("ERROR: Invalid CNV types specified: {}".format(
+            ", ".join(invalid)))
+    pedfile = None
+    if ped is not None:
+        pedfile = PedFile(ped)
+    for cnv_type in cnv_types:
+        cnv_readers = [CnvVcf(x, cnv_type=cnv_type, ped=pedfile) for x in vcfs]
+        contig_order = check_contig_order(cnv_readers)
+        cnvs = []
+        for cr in cnv_readers:
+            cnvs.append(next(cr))
+        while True:
+            if None in cnvs:
+                remove = [i for i in range(len(cnvs)) if cnvs[i] is None]
+                cnvs = [cnvs[i] for i in range(len(cnvs)) if i not in remove]
+                cnv_readers = [cnv_readers[i] for i in range(len(cnv_readers))
+                               if i not in remove]
+                if len(cnvs) < min_intersect:
+                    logger.info("Fewer than {} VCFs ".format(min_intersect) +
+                                "with remaining {} calls. ".format(cnv_type) +
+                                "Done parsing {} CNVs.".format(cnv_type))
+                    break
+            min_chrom = cnvs[0].chrom
+            min_stop = cnvs[0].stop
+            min_i = 0
+            for i in range(1, len(cnvs)):
+                if contig_order[cnvs[i].chrom] < contig_order[min_chrom]:
+                    min_chrom = cnvs[i].chrom
+                    min_stop = cnvs[i].stop
+                    min_i = i
+                elif cnvs[i].chrom == min_chrom and cnvs[i].stop < min_stop:
+                    min_stop = cnvs[i].stop
+                    min_i = i
+            others = (cnvs[i] for i in range(len(cnvs)) if i != min_i)
+            overlaps = [x for x in others if x.chrom == min_chrom and
+                        x.start < min_stop]
+            if overlaps:
+                overlaps.append(cnvs[min_i])
+                if len(overlaps) >= min_intersect:
+                    start = min(x.start for x in overlaps)
+                    stop = max(x.stop for x in overlaps)
+                    logger.info("Overlapping {} at {}:{}-{} ({})".format(
+                        cnv_type,
+                        cnvs[0].chrom,
+                        start,
+                        stop,
+                        len(overlaps)))
+                # TODO only output if overlaps are not contained in previously
+                #      written CNV
+                # TODO Output CNV!
+            for i in (x for x in range(len(cnvs)) if cnvs[x].stop == min_stop):
+                try:
+                    cnvs[i] = next(cnv_readers[i])
+                except StopIteration:
+                    logger.info("Exhausted records in {}".format(vcfs[i]))
+                    cnvs[i] = None
+
+
+if __name__ == '__main__':
+    parser = get_argparser()
+    args = parser.parse_args()
+    if len(args.vcfs) < 2:
+        parser.print_usage()
+        sys.exit('At least 2 VCFs must be provided.')
+    main(**vars(args))
