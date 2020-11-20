@@ -48,7 +48,7 @@ class CnvFromVcf(Cnv):
 class CnvVcf(object):
     ''' A class for iterating over CNVs of the same type in a VCF.'''
 
-    def __init__(self, vcf, cnv_type='LOSS', ped=None):
+    def __init__(self, vcf, cnv_type='LOSS', ped=None, pass_filters=False):
         '''
             Args:
                   vcf: path to VCF/BCF file
@@ -69,6 +69,7 @@ class CnvVcf(object):
         self.vcf = pysam.VariantFile(vcf)
         self.cnv_type = cnv_type.upper()
         self.ped = ped
+        self.pass_filters = pass_filters
         self.current_cnv = None
         self.next_record = None
         self.buffer = []
@@ -123,8 +124,10 @@ class CnvVcf(object):
     def record_matches_type(self, record):
         '''
             Return True if for every affected call the sample has copy
-            number call matching self.cnv_type.
+            number call matching self.cnv_type and passes filters if set.
         '''
+        if self.pass_filters and 'PASS' not in record.filter:
+            return False
         if autosome_re.match(record.chrom):
             ploidies = [2] * len(self.affected)
             un_ploidies = [2] * len(self.unaffected)
