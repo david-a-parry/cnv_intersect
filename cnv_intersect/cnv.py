@@ -58,6 +58,13 @@ class Cnv(object):
             return True
         return False
 
+    def contains(self, other):
+        if self.chrom != other.chrom:
+            return False
+        if self.start < other.start and self.stop > other.stop:
+            return True
+        return False
+
     def merge_interval(self, other):
         '''
             Merge an overlapping interval.

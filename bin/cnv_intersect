@@ -124,6 +124,7 @@ def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
                               pass_filters=pass_filters) for x in vcfs]
         contig_order = check_contig_order(cnv_readers)
         cnvs = []
+        prev_intersect = None
         for cr in cnv_readers:
             cnvs.append(next(cr))
         while True:
@@ -166,17 +167,19 @@ def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
                                     stop=stop,
                                     cnv_type=cnv_type,
                                     records=overlaps)
-                    # TODO only output if overlaps are not contained in
-                    #      previously written CNV
-                    if filter_bed:
-                        if check_bed(filter_bed,
-                                     intersect,
-                                     overlap_fraction):
-                            logger.debug("Filtered on BED regions")
+                    # only output if not contained in prev written intersect
+                    if prev_intersect is None \
+                       or not prev_intersect.contains(intersect):
+                        if filter_bed:
+                            if check_bed(filter_bed,
+                                         intersect,
+                                         overlap_fraction):
+                                logger.debug("Filtered on BED regions")
+                            else:
+                                output_cnv(intersect)
                         else:
                             output_cnv(intersect)
-                    else:
-                        output_cnv(intersect)
+                        prev_intersect = intersect
             for i in (x for x in range(len(cnvs)) if cnvs[x].stop == min_stop):
                 try:
                     cnvs[i] = next(cnv_readers[i])
