@@ -61,7 +61,7 @@ class Cnv(object):
     def contains(self, other):
         if self.chrom != other.chrom:
             return False
-        if self.start < other.start and self.stop > other.stop:
+        if self.start <= other.start and self.stop >= other.stop:
             return True
         return False
 
