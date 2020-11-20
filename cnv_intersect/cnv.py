@@ -5,9 +5,13 @@ class Cnv(object):
         self.cnv_type = cnv_type
         self.records = records
         self.chrom = chrom
-        self.start = int(start)
-        self.stop = int(stop)
+        self.start = int(start)  # 0-based
+        self.stop = int(stop)    # 1-based
         assert(self.start < self.stop)
+
+    @property
+    def length(self):
+        return self.stop - self.start
 
     def __str__(self):
         return "{}:{}-{}-{} ({} records)".format(self.chrom,
