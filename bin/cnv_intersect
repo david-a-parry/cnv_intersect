@@ -9,7 +9,13 @@ from cnv_intersect.cnv_bed import CnvBed
 
 
 class CnvIntersect(Cnv):
-    ''' Class for intersection of multiple CNVs '''
+    '''
+    Class for intersection of multiple CNVs. Assumes all provided CNVs
+    overlap. The start and stop attributes refer to the intersecting
+    region (i.e. the region overlapping in all given cnvs). The
+    limit_start and limit_stop properties refer to the 5' and 3' most
+    coordinates of all CNVs.
+    '''
 
     def __init__(self, cnvs):
         super().__init__(chrom=cnvs[0].chrom,
