@@ -2,6 +2,7 @@
 import argparse
 import pysam
 from collections import defaultdict
+from vase.ped_file import PedFile
 from cnv_intersect.cnv_vcf import autosome_re, valid_cnv_types
 from cnv_intersect.cnv_vcf import warn_non_standard_chromosome
 from cnv_intersect.cnv_vcf import cnv_type_from_record
@@ -22,7 +23,7 @@ def output_line(buff, cnv_type, sample):
     stop = max(x.stop for x in buff)
     cn = buff[0].samples[sample]['CN']
     print("\t".join(str(x) for x in (buff[0].chrom,
-                                     start,
+                                     max(0, start),
                                      stop,
                                      cnv_type,
                                      sample,
@@ -31,9 +32,16 @@ def output_line(buff, cnv_type, sample):
 
 
 def main(vcfs, ped=None, pass_filters=False):
+    if ped is not None:
+        pedfile = PedFile(ped)
     for v in vcfs:
         with pysam.VariantFile(v) as var_file:
             samples = list(var_file.header.samples)
+            if ped is not None:
+                missing = [x for x in samples if x not in pedfile.individuals]
+                if missing:
+                    raise ValueError("Could not find samples '{}'  from '{}' "
+                                     .format(v, missing) + "in PED.")
             sample_buffer = {'GAIN': defaultdict(list),
                              'LOSS': defaultdict(list)}
             for record in var_file:
@@ -45,10 +53,10 @@ def main(vcfs, ped=None, pass_filters=False):
                     if not ped:
                         continue  # no genders, ignore non-autosomes
                     elif record.chrom == 'chrX' or record.chrom == 'X':
-                        ploidies = [2 if ped.individuals[s].is_female() else 1
-                                    for s in samples]
+                        ploidies = [2 if pedfile.individuals[s].is_female()
+                                    else 1 for s in samples]
                     elif record.chrom == 'chrY' or record.chrom == 'Y':
-                        ploidies = [1 if self.ped.individuals[s].is_male() else
+                        ploidies = [1 if pedfile.individuals[s].is_male() else
                                     0 for s in samples]
                     else:
                         warn_non_standard_chromosome(record.chrom)
