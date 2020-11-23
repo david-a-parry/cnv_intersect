@@ -63,10 +63,12 @@ class CnvBed(object):
                               cnv_type=ct,
                               records=[row])
                     regions[ct][row['chrom']].append(cnv)
-        for c_dict in regions.values():
-            for r in c_dict.values():
-                r = self._merge_regions(r)
-        return regions
+        merged = {'LOSS': defaultdict(dict),
+                  'GAIN': defaultdict(dict)}
+        for c_type, c_dict in regions.items():
+            for chrom, reg in c_dict.items():
+                merged[c_type][chrom] = self._merge_regions(reg)
+        return merged
 
     def _merge_regions(self, regions):
         regions.sort(key=attrgetter('start', 'stop'))
