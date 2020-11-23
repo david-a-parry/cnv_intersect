@@ -31,6 +31,18 @@ class CnvIntersect(Cnv):
     def limit_length(self):
         return self.limit_stop - self.limit_start
 
+    def limits_contain(self, other):
+        '''
+        Return True if the 5' and 3' limits of this CnvIntersect contain
+        the limits of other.
+        '''
+        if self.chrom != other.chrom:
+            return False
+        if self.limit_start <= other.limit_start:
+            if self.limit_stop >= other.limit_stop:
+                return True
+        return False
+
 
 def get_argparser():
     parser = argparse.ArgumentParser(
@@ -190,7 +202,7 @@ def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
                         intersect.n_cnvs))
                     # only output if not contained in prev written intersect
                     if prev_intersect is None \
-                       or not prev_intersect.contains(intersect):
+                       or not prev_intersect.limits_contain(intersect):
                         if filter_bed:
                             if check_bed(filter_bed,
                                          intersect,
