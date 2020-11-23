@@ -11,15 +11,19 @@ from cnv_intersect.cnv_bed import CnvBed
 class CnvIntersect(Cnv):
     ''' Class for intersection of multiple CNVs '''
 
-    def __init__(self, chrom, start, stop, cnv_type, intersect_start,
-                 intersect_stop, records=[]):
-        super().__init__(chrom, start, stop, cnv_type, records)
-        self.intersect_start = intersect_start
-        self.intersect_stop = intersect_stop
+    def __init__(self, cnvs):
+        super().__init__(chrom=cnvs[0].chrom,
+                         start=max(x.start for x in cnvs),
+                         stop=min(x.stop for x in cnvs),
+                         cnv_type=cnvs[0].cnv_type,
+                         records=cnvs)
+        self.limit_start = min(x.start for x in cnvs)
+        self.limit_stop = max(x.stop for x in cnvs)
+        self.n_cnvs = len(cnvs)
 
     @property
-    def intersect_length(self):
-        return self.intersect_stop - self.intersect_start
+    def limit_length(self):
+        return self.limit_stop - self.limit_start
 
 
 def get_argparser():
@@ -171,23 +175,13 @@ def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
             if overlaps:
                 overlaps.append(cnvs[min_i])
                 if len(overlaps) >= min_intersect:
-                    start = min(x.start for x in overlaps)
-                    stop = max(x.stop for x in overlaps)
-                    intersect_start = max(x.start for x in overlaps)
-                    intersect_stop = min(x.stop for x in overlaps)
+                    intersect = CnvIntersect(cnvs=overlaps)
                     logger.debug("Overlapping {} at {}:{}-{} ({})".format(
-                        cnv_type,
-                        cnvs[0].chrom,
-                        intersect_start,
-                        intersect_stop,
-                        len(overlaps)))
-                    intersect = CnvIntersect(chrom=overlaps[0].chrom,
-                                             start=start,
-                                             stop=stop,
-                                             intersect_start=intersect_start,
-                                             intersect_stop=intersect_stop,
-                                             cnv_type=cnv_type,
-                                             records=overlaps)
+                        intersect.cnv_type,
+                        intersect.chrom,
+                        intersect.start,
+                        intersect.stop,
+                        intersect.n_cnvs))
                     # only output if not contained in prev written intersect
                     if prev_intersect is None \
                        or not prev_intersect.contains(intersect):
