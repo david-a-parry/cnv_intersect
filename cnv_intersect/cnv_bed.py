@@ -64,14 +64,15 @@ class CnvBed(object):
                                  fieldnames=bed_cols[bed_format])
             for row in bed:
                 if row['type'] in valid_cnv_types:
-                    cnv_type = row['type']
-                elif 'deletion' in row['type'] \
-                   or row['type'] == 'copy number loss':
+                    cnv_type = [row['type']]
+                elif ('deletion' in row['type'] or
+                      row['type'] == 'copy number loss'):
                     cnv_type = ['LOSS']
-                elif row['type'] == 'duplication' \
-                   or row['type'] == 'copy number gain':
+                elif (row['type'] == 'duplication'
+                      or row['type'] == 'copy number gain'):
                     cnv_type = ['GAIN']
-                elif row['type'] == 'copy number variation':
+                elif (row['type'] == 'copy number variation' or
+                      row['type'] == 'gain+loss'):
                     cnv_type = ['LOSS', 'GAIN']  # TODO is this correct?!
                 for ct in cnv_type:
                     cnv = Cnv(chrom=row['chrom'],
