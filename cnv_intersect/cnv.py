@@ -1,3 +1,6 @@
+from operator import attrgetter
+
+
 class Cnv(object):
     ''' A contiguous CNV that may be made up of >1 VCF/BED records.'''
 
@@ -12,6 +15,10 @@ class Cnv(object):
     @property
     def length(self):
         return self.stop - self.start
+
+    def __copy__(self):
+        return Cnv(self.chrom, self.start, self.stop, self.cnv_type,
+                   self.records)
 
     def __str__(self):
         return "{}:{}-{}-{} ({} records)".format(self.chrom,
@@ -82,6 +89,41 @@ class Cnv(object):
         if other.stop > self.stop:
             self.stop = other.stop
         self.records.extend(other.records)
+
+    def merge_new(self, others, assume_sorted=True):
+        '''
+        Return a new merged Cnv object where each record is a reference to
+        the individual merged Cnvs. Additional CNVs must be provided as a
+        list sorted in coordinate order unless assume_sorted is False.
+
+        Args:
+            others:
+                A list of additional CNVs. Must be sorted in coordinate
+                order unless assume_sorted is False.
+
+            assume_sorted:
+                Assume others list is already sorted in coordinate order.
+                Avoids performing a sort on the list but if the list is
+                not already sorted this will likely result in a
+                NonOverlappingIntervalError.
+        '''
+        if not assume_sorted:
+            others.sort(key=attrgetter('start', 'stop'))
+        merged = Cnv(self.chrom,
+                     self.start,
+                     self.stop,
+                     self.cnv_type,
+                     [self] + others)
+        for other in others:
+            if not merged.overlaps(other):
+                raise NonOverlappingIntervalError(
+                    "Can not merge non-overlapping intervals '{}' and '{}'"
+                    .format(self, other))
+            if other.start < merged.start:
+                merged.start = other.start
+            if other.stop > merged.stop:
+                merged.stop = other.stop
+        return merged
 
 
 class NonOverlappingIntervalError(ValueError):

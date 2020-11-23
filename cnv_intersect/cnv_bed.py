@@ -67,23 +67,28 @@ class CnvBed(object):
                   'GAIN': defaultdict(dict)}
         for c_type, c_dict in regions.items():
             for chrom, reg in c_dict.items():
-                merged[c_type][chrom] = self._merge_regions(reg)
+                merged[c_type][chrom] = self._merge_overlaps(reg)
         return merged
 
-    def _merge_regions(self, regions):
-        regions.sort(key=attrgetter('start', 'stop'))
+    def _merge_overlaps(self, cnvs):
+        cnvs.sort(key=attrgetter('start', 'stop'))
         merged = []
-        prev_r = None
-        for r in regions:
-            if prev_r is None:
-                prev_r = r
-            elif prev_r.overlaps(r):
-                prev_r.merge_cnv(r)
+        buff = None
+        buff_start = None
+        buff_end = None
+        for cnv in cnvs:
+            if buff is None:
+                buff = [cnv]
+            elif cnv.start < buff_end and cnv.stop > buff_start:
+                buff.append(cnv)
             else:
-                merged.append(prev_r)
-                prev_r = r
-        if prev_r is not None:
-            merged.append(prev_r)
+                merged_cnv = buff[0].merge_new(buff[1:])
+                merged.append(merged_cnv)
+                buff = [cnv]
+            buff_start = min(x.start for x in buff)
+            buff_end = max(x.stop for x in buff)
+        if buff:
+            merged.append(buff[0].merge_new(buff[1:]))
         return merged
 
     def search(self, cnv):
@@ -94,13 +99,16 @@ class CnvBed(object):
             for j in range(i - 1, -1, -1):
                 other = self.cnvs[cnv.cnv_type][cnv.chrom][j]
                 if cnv.overlaps(other):
-                    matches.insert(0, other)
+                    matches.insert(0, [x for x in other.records if x.start <
+                                       cnv.stop and x.stop > cnv.start])
                 else:
                     break
+            matches = [y for x in matches for y in x]
             for j in range(i, len(self.cnvs[cnv.cnv_type][cnv.chrom])):
                 other = self.cnvs[cnv.cnv_type][cnv.chrom][j]
                 if cnv.overlaps(other):
-                    matches.append(other)
+                    matches.extend(x for x in other.records if x.start <
+                                   cnv.stop and x.stop > cnv.start)
                 else:
                     break
         return matches
