@@ -129,7 +129,7 @@ def check_contig_order(cnv_readers):
 def get_bed_filters(bed_files):
     bed_filters = []
     for bed in bed_files:
-        if bed.endswith('.gz.'):
+        if bed.endswith('.gz'):
             o_func = gzip.open
         else:
             o_func = open
