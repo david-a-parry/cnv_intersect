@@ -65,9 +65,9 @@ class Cnv(object):
             return True
         return False
 
-    def merge_interval(self, other):
+    def merge_cnv(self, other):
         '''
-            Merge an overlapping interval.
+            Merge an overlapping CNV.
 
             Args:
                 other:   Another Cnv object

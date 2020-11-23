@@ -35,7 +35,8 @@ class CnvBed(object):
         self.cnvs = self.read_bed(bed, bed_format)
 
     def read_bed(self, f, bed_format):
-        regions = defaultdict(list)
+        regions = {'LOSS': defaultdict(list),
+                   'GAIN': defaultdict(list)}
         if bed_format not in bed_cols:
             raise ValueError("Unrecognized BED format '{}'".format(bed_format))
         if f.endswith('.gz'):
@@ -61,37 +62,52 @@ class CnvBed(object):
                               stop=row['end'],
                               cnv_type=ct,
                               records=[row])
-                    regions[row['chrom']].append(cnv)
-        for r in regions.values():
-            r.sort(key=attrgetter('start', 'stop'))
+                    regions[ct][row['chrom']].append(cnv)
+        for c_dict in regions.values():
+            for r in c_dict.values():
+                r = self._merge_regions(r)
         return regions
 
-    def search(self, cnv, match_type=True):
-        ''' Return list of CNVs overlapping Cnv object'''
+    def _merge_regions(self, regions):
+        regions.sort(key=attrgetter('start', 'stop'))
+        merged = []
+        prev_r = None
+        for r in regions:
+            if prev_r is None:
+                prev_r = r
+            elif prev_r.overlaps(r):
+                prev_r.merge_cnv(r)
+            else:
+                merged.append(prev_r)
+                prev_r = r
+        if prev_r is not None:
+            merged.append(prev_r)
+        return merged
+
+    def search(self, cnv):
+        ''' Return list of CNVs of same type overlapping Cnv object'''
         if cnv.chrom not in self.cnvs:
             return []
         i = self._bin_search_cnvs(cnv)
         matches = []
         if i > -1:
             for j in range(i - 1, -1, -1):
-                other = self.cnvs[cnv.chrom][j]
+                other = self.cnvs[cnv.cnv_type][cnv.chrom][j]
                 if cnv.overlaps(other):
-                    if not match_type or cnv.cnv_type == other.cnv_type:
-                        matches.insert(0, other)
+                    matches.insert(0, other)
                 else:
                     break
-            for j in range(i, len(self.cnvs[cnv.chrom])):
-                other = self.cnvs[cnv.chrom][j]
+            for j in range(i, len(self.cnvs[cnv.cnv_type][cnv.chrom])):
+                other = self.cnvs[cnv.cnv_type][cnv.chrom][j]
                 if cnv.overlaps(other):
-                    if not match_type or cnv.cnv_type == other.cnv_type:
-                        matches.append(other)
+                    matches.append(other)
                 else:
                     break
         return matches
 
     def _bin_search_cnvs(self, cnv):
         ''' Return array index of first overlapping cnv found in self.cnvs'''
-        others = self.cnvs[cnv.chrom]
+        others = self.cnvs[cnv.cnv_type][cnv.chrom]
         low = 0
         high = len(others) - 1
         while low <= high:
