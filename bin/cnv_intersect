@@ -119,11 +119,11 @@ def check_bed(bed_filter, intersect, fraction):
 def output_cnv(intersect):
     # TODO replace this placeholder function with something that writes VCFs
     print("\t".join(str(x) for x in (intersect.chrom,
-                                     intersect.intersect_start + 1,
-                                     intersect.intersect_stop,
+                                     intersect.start + 1,
+                                     intersect.stop,
                                      intersect.cnv_type,
-                                     len(intersect.records),
-                                     intersect.intersect_length)))
+                                     intersect.n_cnvs,
+                                     intersect.length)))
 
 
 def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
