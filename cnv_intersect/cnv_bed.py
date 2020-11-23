@@ -86,8 +86,6 @@ class CnvBed(object):
 
     def search(self, cnv):
         ''' Return list of CNVs of same type overlapping Cnv object'''
-        if cnv.chrom not in self.cnvs:
-            return []
         i = self._bin_search_cnvs(cnv)
         matches = []
         if i > -1:
@@ -107,6 +105,8 @@ class CnvBed(object):
 
     def _bin_search_cnvs(self, cnv):
         ''' Return array index of first overlapping cnv found in self.cnvs'''
+        if cnv.chrom not in self.cnvs[cnv.cnv_type]:
+            return -1
         others = self.cnvs[cnv.cnv_type][cnv.chrom]
         low = 0
         high = len(others) - 1
