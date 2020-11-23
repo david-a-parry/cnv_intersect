@@ -63,6 +63,9 @@ class CnvVcf(object):
                        will be considered to be affected and all calls
                        from sex chromosomes will be ignored.
 
+                  pass_filters:
+                       Only include variants with PASS in the FILTER field.
+
         '''
         if cnv_type.upper() not in valid_cnv_types:
             raise ValueError("cnv_type must be either 'LOSS' or 'GAIN'")
