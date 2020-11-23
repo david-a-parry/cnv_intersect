@@ -35,7 +35,7 @@ def main(vcfs, ped=None, pass_filters=False):
         with pysam.VariantFile(v) as var_file:
             samples = list(var_file.header.samples)
             sample_buffer = {'GAIN': defaultdict(list),
-                            'LOSS': defaultdict(list)}
+                             'LOSS': defaultdict(list)}
             for record in var_file:
                 if pass_filters and 'PASS' not in record.filter:
                     continue
