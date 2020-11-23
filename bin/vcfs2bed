@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+import argparse
+import pysam
+from collections import defaultdict
+from cnv_intersect.cnv_vcf import autosome_re, valid_cnv_types
+from cnv_intersect.cnv_vcf import warn_non_standard_chromosome
+from cnv_intersect.cnv_vcf import cnv_type_from_record
+
+
+def get_options():
+    parser = argparse.ArgumentParser(
+        description='Output CNVs as BED format lines.')
+    parser.add_argument('vcfs', nargs='+')
+    parser.add_argument('--ped', help='''PED file providing sample genders.''')
+    parser.add_argument('--pass_filters', action='store_true', help='''Only
+                        output variants with PASS in the FILTER field.''')
+    return parser
+
+
+def output_line(buff, cnv_type, sample):
+    start = min(x.start for x in buff)
+    stop = max(x.stop for x in buff)
+    cn = buff[0].samples[sample]['CN']
+    print("\t".join(str(x) for x in (buff[0].chrom,
+                                     start,
+                                     stop,
+                                     cnv_type,
+                                     sample,
+                                     cn,
+                                     len(buff))))
+
+
+def main(vcfs, ped=None, pass_filters=False):
+    for v in vcfs:
+        with pysam.VariantFile(v) as var_file:
+            samples = list(var_file.header.samples)
+            sample_buffer = {'GAIN': defaultdict(list),
+                            'LOSS': defaultdict(list)}
+            for record in var_file:
+                if pass_filters and 'PASS' not in record.filter:
+                    continue
+                if autosome_re.match(record.chrom):
+                    ploidies = [2] * len(samples)
+                else:
+                    if not ped:
+                        continue  # no genders, ignore non-autosomes
+                    elif record.chrom == 'chrX' or record.chrom == 'X':
+                        ploidies = [2 if ped.individuals[s].is_female() else 1
+                                    for s in samples]
+                    elif record.chrom == 'chrY' or record.chrom == 'Y':
+                        ploidies = [1 if self.ped.individuals[s].is_male() else
+                                    0 for s in samples]
+                    else:
+                        warn_non_standard_chromosome(record.chrom)
+                        continue  # ignore non-standard chromosomes
+                cnv_types = [cnv_type_from_record(record, samples[i],
+                                                  ploidies[i])
+                             for i in range(len(samples))]
+                for i in range(len(samples)):
+                    if cnv_types[i] == 'REF':
+                        continue
+                    cn = record.samples[samples[i]]['CN']
+                    buff = sample_buffer[cnv_types[i]][samples[i]]
+                    if not buff:
+                        buff.append(record)
+                    elif (cn == buff[0].samples[samples[i]]['CN']
+                          and record.stop > buff[-1].start
+                          and record.start < buff[-1].stop):  # overlaps
+                        buff.append(record)
+                    else:  # no overlap
+                        if buff:
+                            output_line(buff, cnv_types[i], samples[i])
+                        sample_buffer[cnv_types[i]][samples[i]] = [record]
+        for cnv_type, s_dict in sample_buffer.items():
+            for sample, buff in s_dict.items():
+                if buff:
+                    output_line(buff, cnv_type, sample)
+
+
+if __name__ == '__main__':
+    parser = get_options()
+    main(**vars(parser.parse_args()))
