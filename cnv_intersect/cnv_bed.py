@@ -1,8 +1,9 @@
 import gzip
 import csv
 from collections import defaultdict
-from cnv_intersect.cnv import Cnv
 from operator import attrgetter
+from cnv_intersect.cnv import Cnv
+from cnv_intersect.cnv_vcf import valid_cnv_types
 
 bed_cols = {'dbVar': ['chrom', 'start', 'end', 'name', 'score', 'strand',
                       'thickStart', 'thickEnd', 'reserved', 'frequency',
@@ -12,14 +13,18 @@ bed_cols = {'dbVar': ['chrom', 'start', 'end', 'name', 'score', 'strand',
                     'pubMedId', 'method', 'platform', 'mergedVariants',
                     'supportingVariants', 'sampleSize', 'observedGains',
                     'observedLosses', 'cohortDescription', 'genes', 'samples',
-                    '_size']}
+                    '_size'],
+            None: ['chrom', 'start', 'end', 'type']}
 
 
 class CnvBed(object):
     '''
-    Hold CNV information from BED files in memory. Currently supports BED
+    Hold CNV information from BED files in memory. Currently supports
+    either a four-column format (fourth column = cnv type), BED
     files from UCSC's "NCBI dbVar Curated Common Structural Variants"
-    generated as follows:
+    table or BED files from UCSC's "Database of Genomic Variants: Structural
+    Variation" table. To generate BED files from UCSC, use a command like
+    the example below:
 
         rsync -a -P rsync://hgdownload.soe.ucsc.edu/gbdb/hg38/bbi/dbVar ./
         for BB in dbVar/*.bb
@@ -30,7 +35,17 @@ class CnvBed(object):
 
     '''
 
-    def __init__(self, bed, bed_format='dbVar'):
+    def __init__(self, bed, bed_format=None):
+        '''
+        Args:
+            bed: input BED format file
+
+            bed_format:
+                 Format type. If None will assume 4th column gives CNVs
+                 type and ignore subsequent columns. Other accepted
+                 formats are 'DGV' or 'dbVar' for files downloaded from
+                 UCSC.
+        '''
         self.filename = bed
         self.cnvs = self.read_bed(bed, bed_format)
 
@@ -48,7 +63,9 @@ class CnvBed(object):
                                  delimiter='\t',
                                  fieldnames=bed_cols[bed_format])
             for row in bed:
-                if 'deletion' in row['type'] \
+                if row['type'] in valid_cnv_types:
+                    cnv_type = row['type']
+                elif 'deletion' in row['type'] \
                    or row['type'] == 'copy number loss':
                     cnv_type = ['LOSS']
                 elif row['type'] == 'duplication' \
