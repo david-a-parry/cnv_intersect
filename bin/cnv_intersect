@@ -209,12 +209,12 @@ def get_out_handle(vcfs, output_name=None):
         'Integer',
         'Highest copy number across intersected variants for this sample')
     out.header.info.add(
-        'IVST',
+        'IV5P',
         1,
         'Integer',
         'Start coordinate of 5\' most intersecting variant')
     out.header.info.add(
-        'IVED',
+        'IV3P',
         1,
         'Integer',
         'End coordinate of 3\' most intersecting variant')
@@ -238,8 +238,8 @@ def output_cnv(intersect, fh):
                                         intersect.chrom,
                                         intersect.start + 1,
                                         intersect.stop)
-    rec.info['IVST'] = intersect.limit_start + 1
-    rec.info['IVED'] = intersect.limit_stop
+    rec.info['IV5P'] = intersect.limit_start + 1
+    rec.info['IV3P'] = intersect.limit_stop
     for samp_cnv in intersect.records:
         for s, d in samp_cnv.samples.items():
             rec.samples[s]['MCN'] = d['mean_copy_number']
