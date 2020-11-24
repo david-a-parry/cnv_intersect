@@ -235,7 +235,7 @@ def get_out_handle(vcfs, output_name=None):
 def output_cnv(intersect, fh):
     rec = fh.new_record()
     rec.chrom = intersect.chrom
-    rec.start = intersect.start
+    rec.start = max(0, intersect.start)
     rec.stop = intersect.stop
     rec.alts = (cnv2alt[intersect.cnv_type],)
     rec.id = "CnvIS:{}:{}:{}-{}".format(intersect.cnv_type,
