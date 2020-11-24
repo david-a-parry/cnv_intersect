@@ -165,12 +165,12 @@ class CnvVcf(object):
         else:
             if not self.ped:
                 return False  # no genders, ignore non-autosomes
-            elif record.chrom == 'chrX':
+            elif record.chrom == 'chrX' or record.chrom == 'Y':
                 ploidies = [2 if self.ped.individuals[s].is_female() else 1
                             for s in self.affected]
                 un_ploidies = [2 if self.ped.individuals[s].is_female() else 1
                                for s in self.unaffected]
-            elif record.chrom == 'chrY':
+            elif record.chrom == 'chrY' or record.chrom == 'Y':
                 ploidies = [1 if self.ped.individuals[s].is_male() else 0
                             for s in self.affected]
                 un_ploidies = [1 if self.ped.individuals[s].is_male() else 0
