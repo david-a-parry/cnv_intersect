@@ -144,6 +144,12 @@ class CnvVcf(object):
         return CnvFromVcf(cnv_type=self.cnv_type,
                           records=self.buffer)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):
+        self.vcf.close()
+
     def record_matches_type(self, record):
         '''
             Return True if for every affected call the sample has copy
