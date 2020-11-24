@@ -60,6 +60,8 @@ class CnvFromVcf(Cnv):
             smp2cn[s]['mean_copy_number'] = sum(copy_numbers)/len(copy_numbers)
             smp2cn[s]['max_copy_number'] = max(copy_numbers)
             smp2cn[s]['min_copy_number'] = min(copy_numbers)
+            smp2cn[s]['total_bin_counts'] = sum(x.samples[s]['BC'] for x in
+                                                self.records)
         return smp2cn
 
 
