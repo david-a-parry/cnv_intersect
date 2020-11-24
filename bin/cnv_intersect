@@ -232,6 +232,7 @@ def output_cnv(intersect, fh):
     rec.chrom = intersect.chrom
     rec.start = max(0, intersect.start)
     rec.stop = intersect.stop
+    rec.ref = 'N'
     rec.alts = (cnv2alt[intersect.cnv_type],)
     rec.id = "CnvIS:{}:{}:{}-{}".format(intersect.cnv_type,
                                         intersect.chrom,
