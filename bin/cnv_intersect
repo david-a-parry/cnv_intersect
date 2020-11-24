@@ -218,11 +218,6 @@ def get_out_handle(vcfs, output_name=None):
         1,
         'Integer',
         'End coordinate of 3\' most intersecting variant')
-    out.header.info.add(
-        'IVSMP',
-        '.',
-        'String',
-        'Samples with intersecting variants')
     vcf_temp.close()
     for v in vcfs[1:]:
         v_temp = pysam.VariantFile(v)
@@ -240,11 +235,10 @@ def output_cnv(intersect, fh):
     rec.alts = (cnv2alt[intersect.cnv_type],)
     rec.id = "CnvIS:{}:{}:{}-{}".format(intersect.cnv_type,
                                         intersect.chrom,
-                                        intersect.start,
+                                        intersect.start + 1,
                                         intersect.stop)
-    rec.info['IVST'] = intersect.limit_start
+    rec.info['IVST'] = intersect.limit_start + 1
     rec.info['IVED'] = intersect.limit_stop
-    cnv_samps = []
     for samp_cnv in intersect.records:
         for s, d in samp_cnv.samples.items():
             rec.samples[s]['MCN'] = d['mean_copy_number']
@@ -252,8 +246,9 @@ def output_cnv(intersect, fh):
             rec.samples[s]['HCN'] = d['max_copy_number']
             rec.samples[s]['BC'] = d['total_bin_counts']
             rec.samples[s]['IVVC'] = samp_cnv.n_records
-        cnv_samps.extend(samp_cnv.var_samples)
-    rec.info['IVSMP'] = cnv_samps
+            if s in samp_cnv.var_samples:
+                rec.samples[s]['IVST'] = samp_cnv.start + 1
+                rec.samples[s]['IVED'] = samp_cnv.stop
     fh.write(rec)
 
 
