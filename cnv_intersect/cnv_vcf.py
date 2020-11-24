@@ -1,6 +1,7 @@
 import logging
 import pysam
 import re
+from collections import defaultdict
 from cnv_intersect.cnv import Cnv
 
 valid_cnv_types = ['LOSS', 'GAIN']
@@ -43,6 +44,23 @@ class CnvFromVcf(Cnv):
                          stop=records[-1].stop,
                          cnv_type=cnv_type,
                          records=records)
+        self.samples = self._copy_numbers_from_records()
+        self.__n_records = None
+
+    @property
+    def n_records(self):
+        if self.__n_records is None:
+            self.__n_records = len(self.records)
+        return self.__n_records
+
+    def _copy_numbers_from_records(self):
+        smp2cn = defaultdict(dict)
+        for s in self.records[0].samples:
+            copy_numbers = [x.samples[s]['CN'] for x in self.records]
+            smp2cn[s]['mean_copy_number'] = sum(copy_numbers)/len(copy_numbers)
+            smp2cn[s]['max_copy_number'] = max(copy_numbers)
+            smp2cn[s]['min_copy_number'] = min(copy_numbers)
+        return smp2cn
 
 
 class CnvVcf(object):
