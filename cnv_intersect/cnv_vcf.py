@@ -36,7 +36,7 @@ def cnv_type_from_record(record, sample, ploidy=2):
 class CnvFromVcf(Cnv):
     ''' A contiguous CNV that may be made up of >1 VCF records.'''
 
-    def __init__(self, cnv_type, records):
+    def __init__(self, cnv_type, records, var_samples=[]):
         self.cnv_type = cnv_type
         self.records = records
         super().__init__(chrom=records[0].chrom,
@@ -45,6 +45,7 @@ class CnvFromVcf(Cnv):
                          cnv_type=cnv_type,
                          records=records)
         self.samples = self._copy_numbers_from_records()
+        self.var_samples = var_samples
         self.__n_records = None
 
     @property
@@ -142,7 +143,8 @@ class CnvVcf(object):
         if not self.buffer:
             raise StopIteration()
         return CnvFromVcf(cnv_type=self.cnv_type,
-                          records=self.buffer)
+                          records=self.buffer,
+                          var_samples=self.affected)
 
     def __enter__(self):
         return self
