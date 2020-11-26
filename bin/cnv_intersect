@@ -285,7 +285,7 @@ def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
                         intersect.n_cnvs))
                     # only output if not contained in prev written intersect
                     if prev_intersect is None \
-                       or not prev_intersect.limits_contain(intersect):
+                       or not prev_intersect.contains(intersect):
                         prev_intersect = None
                         if filter_beds:
                             if check_bed_filters(filter_beds,
