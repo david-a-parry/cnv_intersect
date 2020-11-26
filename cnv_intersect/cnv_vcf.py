@@ -131,9 +131,10 @@ class CnvVcf(object):
             # add contiguous records to buffer
             if self.buffer:
                 for record in self.vcf:
-                    if record.start < self.buffer[-1].stop \
-                       and record.chrom == self.buffer[-1].chrom \
-                       and self.record_matches_type(record):
+                    if not self.record_matches_type(record):
+                        continue
+                    if (record.start < self.buffer[-1].stop and
+                            record.chrom == self.buffer[-1].chrom):
                         self.buffer.append(record)
                     else:
                         self.next_record = record
