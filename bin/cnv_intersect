@@ -209,7 +209,8 @@ def output_cnv(intersect, fh):
             rec.samples[s]['MCN'] = d['mean_copy_number']
             rec.samples[s]['LCN'] = d['min_copy_number']
             rec.samples[s]['HCN'] = d['max_copy_number']
-            rec.samples[s]['BC'] = d['total_bin_counts']
+            if 'BC' in fh.header.info:
+                rec.samples[s]['BC'] = d['total_bin_counts']
             rec.samples[s]['IVVC'] = samp_cnv.n_records
             if s in samp_cnv.var_samples:
                 rec.samples[s]['IVST'] = samp_cnv.start + 1
