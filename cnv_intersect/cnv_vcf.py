@@ -26,10 +26,29 @@ def warn_non_standard_chromosome(chrom):
 
 def cnv_type_from_record(record, sample, ploidy=2):
     ''' Return 'LOSS', 'GAIN' or 'REF' based on sample call in VcfRecord'''
-    if record.samples[sample]['CN'] < ploidy:
-        return 'LOSS'
-    elif record.samples[sample]['CN'] > ploidy:
-        return 'GAIN'
+    if 'SVTYPE' not in record.info:
+        return 'REF'
+    if record.info['SVTYPE'] == 'CNV':
+        if record.samples[sample]['CN'] < ploidy:
+            return 'LOSS'
+        elif record.samples[sample]['CN'] > ploidy:
+            return 'GAIN'
+    else:
+        if len(record.alts) > 1:
+            raise ValueError("Variants must be biallelic but the variant " +
+                             "{}:{}-{}/{}".format(record.chrom,
+                                                  record.pos,
+                                                  record.ref,
+                                                  ",".join(record.alts)) +
+                             " has {} ALT alleles".format(len(record.alts)))
+        if 1 in record.samples[sample]['GT']:
+            if record.info['SVTYPE'] == 'DEL':
+                return 'LOSS'
+            elif record.info['SVTYPE'] == 'DUP':
+                return 'GAIN'
+            elif record.info['SVTYPE'] == 'INS':
+                return 'GAIN'
+            return record.info['SVTYPE']
     return 'REF'
 
 
@@ -69,7 +88,8 @@ class CnvFromVcf(Cnv):
 class CnvVcf(object):
     ''' A class for iterating over CNVs of the same type in a VCF.'''
 
-    def __init__(self, vcf, cnv_type='LOSS', ped=None, pass_filters=False):
+    def __init__(self, vcf, cnv_type='LOSS', ped=None, pass_filters=False,
+                 minimum_length=100):
         '''
             Args:
                   vcf: path to VCF/BCF file
@@ -87,6 +107,9 @@ class CnvVcf(object):
                   pass_filters:
                        Only include variants with PASS in the FILTER field.
 
+                  minimum_length:
+                       Ignore variants shorter than this value.
+
         '''
         if cnv_type.upper() not in valid_cnv_types:
             raise ValueError("cnv_type must be either 'LOSS' or 'GAIN'")
@@ -94,6 +117,7 @@ class CnvVcf(object):
         self.cnv_type = cnv_type.upper()
         self.ped = ped
         self.pass_filters = pass_filters
+        self.minimum_length = minimum_length
         self.current_cnv = None
         self.next_record = None
         self.buffer = []
@@ -160,6 +184,9 @@ class CnvVcf(object):
         '''
         if self.pass_filters and 'PASS' not in record.filter:
             return False
+        if (self.minimum_length > 0 and
+                record.stop - record.start < self.minimum_length):
+            return False
         if autosome_re.match(record.chrom):
             ploidies = [2] * len(self.affected)
             un_ploidies = [2] * len(self.unaffected)
@@ -183,13 +210,33 @@ class CnvVcf(object):
                for s, p in zip(self.affected, ploidies)):
             if any(cnv_type_from_record(record, u) == self.cnv_type
                    for u, p in zip(self.unaffected, un_ploidies)):
-                max_cn_aff = max(record.samples[s]['CN'] for s in
-                                 self.affected)
-                min_cn_un = min(record.samples[u]['CN'] for u in
-                                self.unaffected)
-                if max_cn_aff >= min_cn_un:
+                if self._unaffected_with_same_ploidy(record):
                     return False
             return True
         return False
 
+    def unaffected_with_same_ploidy(self, record):
+        if record.info['SVTYPE'] == 'CNV':
+            return self._unaffected_with_same_cnv(record)
+        return self._unaffected_with_same_sv(record)
 
+    def _unaffected_with_same_cnv(self, record):
+        if self.cnv_type == 'LOSS':
+            max_cn_aff = max(record.samples[s]['CN'] for s in
+                             self.affected)
+            min_cn_un = min(record.samples[u]['CN'] for u in
+                            self.unaffected)
+            return max_cn_aff >= min_cn_un
+        elif self.cnv_type == 'GAIN':
+            min_cn_aff = min(record.samples[s]['CN'] for s in
+                             self.affected)
+            max_cn_un = max(record.samples[u]['CN'] for u in
+                            self.unaffected)
+            return min_cn_aff <= max_cn_un
+
+    def _unaffected_with_same_sv(self, record):
+        # should already have checked that this is biallelic in
+        # cnv_type_from_record function
+        min_aff = min(record.samples[s]['GT'].count(1) for s in self.affected)
+        max_un = min(record.samples[u]['GT'].count(1) for u in self.unaffected)
+        return min_aff > max_un
