@@ -3,6 +3,7 @@ import argparse
 import gzip
 import logging
 import pysam
+import re
 import sys
 from vase.ped_file import PedFile
 from cnv_intersect.cnv_intersect import CnvIntersect
@@ -12,6 +13,7 @@ from cnv_intersect.cnv_bed import CnvBed
 cnv2alt = {'LOSS': '<DEL>',
            'GAIN': '<DUP>',
            'REF': None}
+chrom_re = re.compile(r'^(chr)?(\\d+|[XY])$')
 
 
 def get_argparser():
@@ -89,9 +91,15 @@ def get_contig_order(vcf):
 
 def check_contig_order(cnv_readers):
     contig_order = get_contig_order(cnv_readers[0].vcf)
+    main_contig_order = dict((k, v) for k, v in contig_order.items() if
+                             chrom_re.match(k))
     for cr in cnv_readers[1:]:
-        if get_contig_order(cr.vcf) != contig_order:
+        co = get_contig_order(cr.vcf)
+        main_co = dict((k, v) for k, v in co.items() if chrom_re.match(k))
+        if main_co != main_contig_order:
             raise ValueError("Input VCFs do not share the same contig order!")
+        for k in (x for x in co if x not in main_co and x not in contig_order):
+            contig_order[k] = len(contig_order)
     return contig_order
 
 
