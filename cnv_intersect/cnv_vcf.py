@@ -76,13 +76,30 @@ class CnvFromVcf(Cnv):
     def _copy_numbers_from_records(self):
         smp2cn = defaultdict(dict)
         for s in self.records[0].samples:
-            copy_numbers = [x.samples[s]['CN'] for x in self.records]
+            copy_numbers = [self._copy_number_from_record(x, s) for x in
+                            self.records]
             smp2cn[s]['mean_copy_number'] = sum(copy_numbers)/len(copy_numbers)
             smp2cn[s]['max_copy_number'] = max(copy_numbers)
             smp2cn[s]['min_copy_number'] = min(copy_numbers)
             smp2cn[s]['total_bin_counts'] = sum(x.samples[s]['BC'] for x in
                                                 self.records)
         return smp2cn
+
+    def _copy_number_from_record(self, record, sample):
+        if record.info['SVTYPE'] == 'CNV':
+            return record.samples[sample]['CN']
+        else:
+            alts = sum(1 for x in record.samples[sample]['GT'] if x is not None
+                       and x > 0)
+            refs = sum(1 for x in record.samples[sample]['GT'] if x == 0)
+            if record.info['SVTYPE'] == 'DEL':
+                return (alts * -1) + refs
+            elif record.info['SVTYPE'] == 'DUP':
+                return (alts * 2) + refs
+            elif record.info['SVTYPE'] == 'INS':
+                return (alts * 2) + refs
+            raise ValueError("Can not interpret SNVTYPE={}".format(
+                record.info['SVTYPE']))
 
 
 class CnvVcf(object):
