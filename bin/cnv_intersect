@@ -286,6 +286,7 @@ def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
                     # only output if not contained in prev written intersect
                     if prev_intersect is None \
                        or not prev_intersect.limits_contain(intersect):
+                        prev_intersect = None
                         if filter_beds:
                             if check_bed_filters(filter_beds,
                                                  intersect,
@@ -293,9 +294,10 @@ def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
                                 logger.debug("Filtered on BED regions")
                             else:
                                 output_cnv(intersect, outvcf)
+                                prev_intersect = intersect
                         else:
                             output_cnv(intersect, outvcf)
-                        prev_intersect = intersect
+                            prev_intersect = intersect
             for i in (x for x in range(len(cnvs)) if cnvs[x].stop == min_stop):
                 try:
                     cnvs[i] = next(cnv_readers[i])
