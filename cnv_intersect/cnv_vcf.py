@@ -165,7 +165,7 @@ class CnvVcf(object):
             if self.next_record is not None:
                 if self.record_matches_type(self.next_record):
                     self.buffer.append(self.next_record)
-            self.next_record = None
+                self.next_record = None
             if not self.buffer:
                 for record in self.vcf:
                     if self.record_matches_type(record):
