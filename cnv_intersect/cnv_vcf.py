@@ -88,19 +88,18 @@ class CnvFromVcf(Cnv):
                 smp2cn[s]['total_bin_counts'] = None
         return smp2cn
 
-    def _copy_number_from_record(self, record, sample):
+    def _copy_number_from_record(self, record, sample, ploidy=2):
         if record.info['SVTYPE'] == 'CNV':
             return record.samples[sample]['CN']
         else:
             alts = sum(1 for x in record.samples[sample]['GT'] if x is not None
                        and x > 0)
-            refs = sum(1 for x in record.samples[sample]['GT'] if x == 0)
             if record.info['SVTYPE'] == 'DEL':
-                return (alts * -1) + refs
+                return (alts * -1) + ploidy
             elif record.info['SVTYPE'] == 'DUP':
-                return (alts * 2) + refs
+                return alts + ploidy
             elif record.info['SVTYPE'] == 'INS':
-                return (alts * 2) + refs
+                return alts + ploidy
             raise ValueError("Can not interpret SNVTYPE={}".format(
                 record.info['SVTYPE']))
 
