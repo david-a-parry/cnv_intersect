@@ -215,7 +215,7 @@ class CnvVcf(object):
             return True
         return False
 
-    def unaffected_with_same_ploidy(self, record):
+    def _unaffected_with_same_ploidy(self, record):
         if record.info['SVTYPE'] == 'CNV':
             return self._unaffected_with_same_cnv(record)
         return self._unaffected_with_same_sv(record)
