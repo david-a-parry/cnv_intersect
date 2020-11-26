@@ -59,8 +59,8 @@ class CnvFromVcf(Cnv):
         self.cnv_type = cnv_type
         self.records = records
         super().__init__(chrom=records[0].chrom,
-                         start=records[0].start,
-                         stop=records[-1].stop,
+                         start=min(x.start for x in records),
+                         stop=max(x.stop for x in records),
                          cnv_type=cnv_type,
                          records=records)
         self.samples = self._copy_numbers_from_records()
