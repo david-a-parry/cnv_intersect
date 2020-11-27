@@ -190,6 +190,11 @@ def get_out_handle(vcfs, output_name=None):
         1,
         'Integer',
         'End coordinate of 3\' most intersecting variant')
+    out.header.info.add(
+        'IVLEN',
+        1,
+        'Integer',
+        'Length of variant intersection')
     vcf_temp.close()
     for v in vcfs[1:]:
         v_temp = pysam.VariantFile(v)
