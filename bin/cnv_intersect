@@ -126,24 +126,6 @@ def get_bed_filters(bed_files):
     return bed_filters
 
 
-def check_bed(bed_filter, intersect, fraction):
-    overlaps = bed_filter.search(intersect)
-    for ovr in overlaps:
-        o_start = max(ovr.start, intersect.start)
-        o_stop = min(ovr.stop, intersect.stop)
-        covered = float(intersect.length)/(o_stop - o_start)
-        if covered > fraction:
-            return True
-    return False
-
-
-def check_bed_filters(bed_filters, intersect, fraction):
-    for bf in bed_filters:
-        if check_bed(bf, intersect, fraction):
-            return True
-    return False
-
-
 def get_out_handle(vcfs, output_name=None):
     if output_name is None:
         output_name = '-'
@@ -248,8 +230,12 @@ def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
         filter_beds = get_bed_filters(filter_cnvs)
     outvcf = get_out_handle(vcfs, output)
     for cnv_type in cnv_types:
-        cnv_readers = [CnvVcf(x, cnv_type=cnv_type, ped=pedfile,
-                              pass_filters=pass_filters) for x in vcfs]
+        cnv_readers = [CnvVcf(vcf=x,
+                              cnv_type=cnv_type,
+                              ped=pedfile,
+                              pass_filters=pass_filters,
+                              cnv_filters=filter_beds,
+                              overlap_fraction=overlap_fraction) for x in vcfs]
         contig_order = check_contig_order(cnv_readers)
         cnvs = []
         prev_intersect = None
@@ -300,18 +286,8 @@ def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
                         if not prev_recs.issuperset(curr_recs):
                             no_overlap = True
                     if no_overlap:
-                        prev_intersect = None
-                        if filter_beds:
-                            if check_bed_filters(filter_beds,
-                                                 intersect,
-                                                 overlap_fraction):
-                                logger.debug("Filtered on BED regions")
-                            else:
-                                output_cnv(intersect, outvcf)
-                                prev_intersect = intersect
-                        else:
-                            output_cnv(intersect, outvcf)
-                            prev_intersect = intersect
+                        output_cnv(intersect, outvcf)
+                        prev_intersect = intersect
             for i in (x for x in range(len(cnvs)) if cnvs[x].stop == min_stop):
                 try:
                     cnvs[i] = next(cnv_readers[i])

@@ -133,7 +133,7 @@ class CnvVcf(object):
     ''' A class for iterating over CNVs of the same type in a VCF.'''
 
     def __init__(self, vcf, cnv_type='LOSS', ped=None, pass_filters=False,
-                 minimum_length=100):
+                 minimum_length=100, cnv_filters=[], overlap_fraction=0.8):
         '''
             Args:
                   vcf: path to VCF/BCF file
@@ -154,6 +154,17 @@ class CnvVcf(object):
                   minimum_length:
                        Ignore variants shorter than this value.
 
+                  cnv_filters:
+                       Collection of CnvBed objects to use to filter
+                       matching variants. If any of these contain overlapping
+                       CNVs of the same type as a record in the record will be
+                       ignored if covered by a fraction defined by the
+                       'overlap_fraction' option.
+
+                 overlap_fraction:
+                       Minimum overlap of a CNV from cnv_filters with a record
+                       required in order to filter the record. Default=0.8.
+
         '''
         if cnv_type.upper() not in valid_cnv_types:
             raise ValueError("cnv_type must be either 'LOSS' or 'GAIN'")
@@ -162,6 +173,8 @@ class CnvVcf(object):
         self.ped = ped
         self.pass_filters = pass_filters
         self.minimum_length = minimum_length
+        self.cnv_filters = cnv_filters
+        self.overlap_fraction = overlap_fraction
         self.current_cnv = None
         self.next_record = None
         self.buffer = []
@@ -256,6 +269,8 @@ class CnvVcf(object):
                    for u, p in zip(self.unaffected, un_ploidies)):
                 if self._unaffected_with_same_ploidy(record):
                     return False
+            if self._cnv_filter_matches(record):
+                return False
             return True
         return False
 
@@ -284,3 +299,21 @@ class CnvVcf(object):
         min_aff = min(record.samples[s]['GT'].count(1) for s in self.affected)
         max_un = min(record.samples[u]['GT'].count(1) for u in self.unaffected)
         return min_aff > max_un
+
+    def _cnv_filter_matches(self, record):
+        if not self.cnv_filters:
+            return False
+        cnv = Cnv(chrom=record.chrom,
+                  start=record.start,
+                  stop=record.stop,
+                  cnv_type=self.cnv_type,
+                  records=[record])
+        for cf in self.cnv_filters:
+            overlaps = cf.search(cnv)
+            for ovr in overlaps:
+                o_start = max(ovr.start, record.start)
+                o_stop = min(ovr.stop, record.stop)
+                covered = float(record.stop - record.start)/(o_stop - o_start)
+                if covered > self.overlap_fraction:
+                    return True
+        return False
