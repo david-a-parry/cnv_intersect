@@ -67,6 +67,31 @@ class CnvFromVcf(Cnv):
         self.var_samples = var_samples
         self.__n_records = None
 
+    def __eq__(self, other):
+        return (other is not None and self.cnv_type == other.cnv_type and
+                self.chrom == other.chrom and self.start == other.start and
+                self.stop == other.stop and
+                len(self.records) == len(other.records) and
+                set(self.var_samples) == set(other.var_samples))
+
+    def __ne__(self, other):
+        return (other is None or self.cnv_type != other.cnv_type or
+                self.chrom != other.chrom or self.start != other.start or
+                self.stop != other.stop and
+                len(self.records) != len(other.records) and
+                set(self.var_samples) != set(other.var_samples))
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def __str__(self):
+        return "{}:{}-{}-{}-{} ({} records)".format(self.chrom,
+                                                    self.start,
+                                                    self.stop,
+                                                    self.cnv_type,
+                                                    ",".join(self.var_samples),
+                                                    len(self.records))
+
     @property
     def n_records(self):
         if self.__n_records is None:

@@ -217,6 +217,7 @@ def output_cnv(intersect, fh):
                                         intersect.stop)
     rec.info['IV5P'] = intersect.limit_start + 1
     rec.info['IV3P'] = intersect.limit_stop
+    rec.info['IVLEN'] = intersect.stop - intersect.start
     for samp_cnv in intersect.records:
         for s, d in samp_cnv.samples.items():
             rec.samples[s]['MCN'] = d['mean_copy_number']
@@ -289,8 +290,16 @@ def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
                         intersect.stop,
                         intersect.n_cnvs))
                     # only output if not contained in prev written intersect
-                    if prev_intersect is None \
-                       or not prev_intersect.contains(intersect):
+                    no_overlap = False
+                    if prev_intersect is None:
+                        no_overlap = True
+                    else:
+                        prev_recs = set(hash(x) for x in
+                                        prev_intersect.records)
+                        curr_recs = set((hash(x) for x in intersect.records))
+                        if not prev_recs.issuperset(curr_recs):
+                            no_overlap = True
+                    if no_overlap:
                         prev_intersect = None
                         if filter_beds:
                             if check_bed_filters(filter_beds,
