@@ -313,7 +313,7 @@ class CnvVcf(object):
             for ovr in overlaps:
                 o_start = max(ovr.start, record.start)
                 o_stop = min(ovr.stop, record.stop)
-                covered = float(record.stop - record.start)/(o_stop - o_start)
+                covered = float(o_stop - o_start)/(record.stop - record.start)
                 if covered > self.overlap_fraction:
                     return True
         return False
