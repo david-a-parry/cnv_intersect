@@ -35,10 +35,10 @@ def get_argparser():
     parser.add_argument('-t', '--cnv_types', default=['LOSS', 'GAIN'],
                         nargs='+', help='''CNV types to identify. Valid values
                         are "LOSS" or "GAIN".''')
-    parser.add_argument('--minimum_cnv_length', type=int, metavar='MIN',
+    parser.add_argument('--minimum_cnv_length', type=float, metavar='MIN',
                         help='''Set a minimum length cutoff. CNVs shorter than
                         this value will be ignored.''')
-    parser.add_argument('--maximum_cnv_length', type=int, metavar='MAX',
+    parser.add_argument('--maximum_cnv_length', type=float, metavar='MAX',
                         help='''Set a maximum length cutoff. CNVs longer than
                         this value will be ignored.''')
     parser.add_argument('--pass_filters', action='store_true', help='''Ignore
