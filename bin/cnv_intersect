@@ -59,12 +59,6 @@ def get_logger(debug=False):
     level = logging.DEBUG if debug else logging.INFO
     logger = logging.getLogger("CNV Intersect")
     logger.setLevel(level)
-    formatter = logging.Formatter(
-        '[%(asctime)s] %(name)s - %(levelname)s - %(message)s')
-    ch = logging.StreamHandler()
-    ch.setLevel(logger.level)
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
     return logger
 
 
