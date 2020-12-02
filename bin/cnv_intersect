@@ -286,7 +286,13 @@ def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
                 try:
                     cnvs[i] = next(cnv_readers[i])
                 except StopIteration:
-                    logger.info("Exhausted records in {}".format(vcfs[i]))
+                    logger.info("Finished reading {}".format(vcfs[i]))
+                    logger.info("{:,} records read, ".format(
+                                    cnv_readers[i].records_read) +
+                                "{:,} filtered, ".format(
+                                    cnv_readers[i].records_filtered) +
+                                "{:,} CNVs aggregated".format(
+                                    cnv_readers[i].cnvs_created))
                     cnvs[i] = None
     outvcf.close()
 

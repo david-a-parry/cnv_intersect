@@ -177,6 +177,9 @@ class CnvVcf(object):
         self.overlap_fraction = overlap_fraction
         self.current_cnv = None
         self.next_record = None
+        self.records_read = 0
+        self.records_filtered = 0
+        self.cnvs_created = 0
         self.buffer = []
         if self.ped:
             self.affected = [x for x in self.vcf.header.samples if x in
@@ -206,12 +209,14 @@ class CnvVcf(object):
                 self.next_record = None
             if not self.buffer:
                 for record in self.vcf:
+                    self.records_read += 1
                     if self.record_matches_type(record):
                         self.buffer.append(record)
                         break
             # add contiguous records to buffer
             if self.buffer:
                 for record in self.vcf:
+                    self.records_read += 1
                     if not self.record_matches_type(record):
                         continue
                     if (record.start < self.buffer[-1].stop and
@@ -224,6 +229,7 @@ class CnvVcf(object):
             pass
         if not self.buffer:
             raise StopIteration()
+        self.cnvs_created += 1
         return CnvFromVcf(cnv_type=self.cnv_type,
                           records=self.buffer,
                           var_samples=self.affected)
@@ -240,9 +246,11 @@ class CnvVcf(object):
             number call matching self.cnv_type and passes filters if set.
         '''
         if self.pass_filters and 'PASS' not in record.filter:
+            self.records_filtered += 1
             return False
         if (self.minimum_length > 0 and
                 record.stop - record.start < self.minimum_length):
+            self.records_filtered += 1
             return False
         if autosome_re.match(record.chrom):
             ploidies = [2] * len(self.affected)
@@ -268,10 +276,13 @@ class CnvVcf(object):
             if any(cnv_type_from_record(record, u) == self.cnv_type
                    for u, p in zip(self.unaffected, un_ploidies)):
                 if self._unaffected_with_same_ploidy(record):
+                    self.records_filtered += 1
                     return False
             if self._cnv_filter_matches(record):
+                self.records_filtered += 1
                 return False
             return True
+        self.records_filtered += 1
         return False
 
     def _unaffected_with_same_ploidy(self, record):
