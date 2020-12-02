@@ -229,12 +229,19 @@ def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
                               ped=pedfile,
                               pass_filters=pass_filters,
                               cnv_filters=filter_beds,
-                              overlap_fraction=overlap_fraction) for x in vcfs]
+                              overlap_fraction=overlap_fraction,
+                              minimum_length=minimum_cnv_length,
+                              maximum_length=maximum_cnv_length) for x in vcfs]
         contig_order = check_contig_order(cnv_readers)
         cnvs = []
         prev_intersect = None
         for cr in cnv_readers:
-            cnvs.append(next(cr))
+            try:
+                cnvs.append(next(cr))
+            except StopIteration:
+                logger.warning("No qualifying records in file {}".format(
+                    cr.vcf.filename))
+                cnvs.append(None)
         while True:
             if None in cnvs:
                 remove = [i for i in range(len(cnvs)) if cnvs[i] is None]
