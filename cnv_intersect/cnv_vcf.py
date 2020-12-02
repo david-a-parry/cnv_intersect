@@ -133,7 +133,8 @@ class CnvVcf(object):
     ''' A class for iterating over CNVs of the same type in a VCF.'''
 
     def __init__(self, vcf, cnv_type='LOSS', ped=None, pass_filters=False,
-                 minimum_length=100, cnv_filters=[], overlap_fraction=0.8):
+                 minimum_length=None, maximum_length=None, cnv_filters=[],
+                 overlap_fraction=0.8):
         '''
             Args:
                   vcf: path to VCF/BCF file
@@ -173,6 +174,7 @@ class CnvVcf(object):
         self.ped = ped
         self.pass_filters = pass_filters
         self.minimum_length = minimum_length
+        self.maximum_length = maximum_length
         self.cnv_filters = cnv_filters
         self.overlap_fraction = overlap_fraction
         self.current_cnv = None
@@ -248,8 +250,12 @@ class CnvVcf(object):
         if self.pass_filters and 'PASS' not in record.filter:
             self.records_filtered += 1
             return False
-        if (self.minimum_length > 0 and
+        if (self.minimum_length and
                 record.stop - record.start < self.minimum_length):
+            self.records_filtered += 1
+            return False
+        if (self.maximum_length and
+                record.stop - record.start > self.maximum_length):
             self.records_filtered += 1
             return False
         if autosome_re.match(record.chrom):

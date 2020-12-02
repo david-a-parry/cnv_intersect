@@ -35,6 +35,12 @@ def get_argparser():
     parser.add_argument('-t', '--cnv_types', default=['LOSS', 'GAIN'],
                         nargs='+', help='''CNV types to identify. Valid values
                         are "LOSS" or "GAIN".''')
+    parser.add_argument('--minimum_cnv_length', type=int, metavar='MIN',
+                        help='''Set a minimum length cutoff. CNVs shorter than
+                        this value will be ignored.''')
+    parser.add_argument('--maximum_cnv_length', type=int, metavar='MAX',
+                        help='''Set a maximum length cutoff. CNVs longer than
+                        this value will be ignored.''')
     parser.add_argument('--pass_filters', action='store_true', help='''Ignore
                         CNVs without a PASS filter field.''')
     parser.add_argument('-f', '--filter_cnvs', metavar='BED', nargs='+',
@@ -210,7 +216,8 @@ def output_cnv(intersect, fh):
 
 def main(vcfs, ped=None, output=None, cnv_types=['LOSS', 'GAIN'],
          pass_filters=False, min_intersect=2, filter_cnvs=None,
-         overlap_fraction=0.8, debug=False):
+         overlap_fraction=0.8, minimum_cnv_length=None,
+         maximum_cnv_length=None, debug=False):
     logger = get_logger(debug)
     pedfile = None
     invalid = set(cnv_types).difference(valid_cnv_types)
