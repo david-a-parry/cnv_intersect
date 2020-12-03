@@ -177,6 +177,7 @@ def get_out_handle(vcfs, output_name=None):
         1,
         'Integer',
         'Length of variant intersection')
+    out.header.add_meta(key="cnv_intersect", value=str.join(" ", sys.argv))
     vcf_temp.close()
     for v in vcfs[1:]:
         v_temp = pysam.VariantFile(v)
