@@ -63,8 +63,9 @@ class CnvBed(object):
                                  delimiter='\t',
                                  fieldnames=bed_cols[bed_format])
             for row in bed:
-                if row['type'] in valid_cnv_types:
-                    cnv_type = [row['type']]
+                cnv_type = []
+                if row['type'].upper() in valid_cnv_types:
+                    cnv_type = [row['type'].upper()]
                 elif ('deletion' in row['type'] or
                       row['type'] == 'copy number loss'):
                     cnv_type = ['LOSS']
@@ -74,9 +75,6 @@ class CnvBed(object):
                 elif (row['type'] == 'copy number variation' or
                       row['type'] == 'gain+loss'):
                     cnv_type = ['LOSS', 'GAIN']  # TODO is this correct?!
-                else:
-                    raise ValueError("Unrecognized CNV type '{}'".format(
-                        row['type']))
                 for ct in cnv_type:
                     cnv = Cnv(chrom=row['chrom'],
                               start=row['start'],
