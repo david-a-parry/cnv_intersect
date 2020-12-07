@@ -74,6 +74,9 @@ class CnvBed(object):
                 elif (row['type'] == 'copy number variation' or
                       row['type'] == 'gain+loss'):
                     cnv_type = ['LOSS', 'GAIN']  # TODO is this correct?!
+                else:
+                    raise ValueError("Unrecognized CNV type '{}'".format(
+                        row['type']))
                 for ct in cnv_type:
                     cnv = Cnv(chrom=row['chrom'],
                               start=row['start'],
