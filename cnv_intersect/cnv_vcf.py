@@ -3,6 +3,8 @@ import pysam
 import re
 from collections import defaultdict
 from cnv_intersect.cnv import Cnv
+from vase.info_filter import InfoFilter
+from vase.format_filter import FormatFilter
 
 valid_cnv_types = ['LOSS', 'GAIN']
 autosome_re = re.compile(r"""^(chr)?(\d+)$""")
@@ -134,7 +136,7 @@ class CnvVcf(object):
 
     def __init__(self, vcf, cnv_type='LOSS', ped=None, pass_filters=False,
                  minimum_length=None, maximum_length=None, cnv_filters=[],
-                 overlap_fraction=0.8):
+                 overlap_fraction=0.8, info_filters=None, sample_filters=None):
         '''
             Args:
                   vcf: path to VCF/BCF file
@@ -166,6 +168,27 @@ class CnvVcf(object):
                        Minimum overlap of a CNV from cnv_filters with a record
                        required in order to filter the record. Default=0.8.
 
+                 info_filters:
+                        Custom filter expressions for filtering on fields in
+                        the INFO field of each record. Must be in the format
+                        '<INFO_FIELD> <comparator> <value>'. Variants will be
+                        retained if they meet the given criteria. For example,
+                        to only keep records with a QD score greater than 4,
+                        you would pass the expression "QD > 4". To only
+                        keep records with the "DB" flag present you would pass
+                        the expression "DB == True".
+
+                        Standard python style operators (">", "<", ">=", "<=",
+                        "==", "!=") are supported. Comparisons will be
+                        performed using the types specified for the given field
+                        in the VCF header (e.g. Float, Integer or String) or as
+                        booleans for Flags.
+
+                sample_filters:
+                        As above for 'info_filters' parameter except values are
+                        evaluated against individual sample calls instead. If a
+                        ped is provided these expressions are only evaluated
+                        against affected individuals.
         '''
         if cnv_type.upper() not in valid_cnv_types:
             raise ValueError("cnv_type must be either 'LOSS' or 'GAIN'")
@@ -197,6 +220,16 @@ class CnvVcf(object):
             if not self.affected:
                 raise ValueError("No samples found in VCF {}".format(vcf))
             self.unaffected = []
+        self.info_filter = None
+        self.sample_filter = None
+        if info_filters:
+            self.info_filter = self._parse_filter_expressions(
+                filters=info_filters,
+                filter_class=InfoFilter)
+        if sample_filters:
+            self.sample_filter = self._parse_filter_expressions(
+                filters=sample_filters,
+                filter_class=FormatFilter)
 
     def __iter__(self):
         return self
@@ -242,28 +275,42 @@ class CnvVcf(object):
     def __exit__(self, exc_type, exc_value, tb):
         self.vcf.close()
 
+    def _parse_filter_expressions(self, filters, filter_class):
+        split_filters = []
+        for expression in filters:
+            exp = expression.split()
+            if len(exp) != 3:
+                raise ValueError(
+                    "--info_filters/--sample_filters must consist of three " +
+                    "quoted values separated by whitespace - for example: " +
+                    "'QS > 20' The provided expression '{}' is invalid."
+                    .format(expression))
+            split_filters.append(exp)
+        return filter_class(vcf=self.vcf, filters=split_filters)
+
+    def _filter_record(self):
+        self.records_filtered += 1
+        return False
+
     def record_matches_type(self, record):
         '''
             Return True if for every affected call the sample has copy
             number call matching self.cnv_type and passes filters if set.
         '''
         if self.pass_filters and 'PASS' not in record.filter:
-            self.records_filtered += 1
-            return False
+            return self._filter_record()
         if (self.minimum_length and
                 record.stop - record.start < self.minimum_length):
-            self.records_filtered += 1
-            return False
+            return self._filter_record()
         if (self.maximum_length and
                 record.stop - record.start > self.maximum_length):
-            self.records_filtered += 1
-            return False
+            return self._filter_record()
         if autosome_re.match(record.chrom):
             ploidies = [2] * len(self.affected)
             un_ploidies = [2] * len(self.unaffected)
         else:
             if not self.ped:
-                return False  # no genders, ignore non-autosomes
+                return self._filter_record()  # no genders, ignore non-autosomes
             elif record.chrom == 'chrX' or record.chrom == 'Y':
                 ploidies = [2 if self.ped.individuals[s].is_female() else 1
                             for s in self.affected]
@@ -276,20 +323,25 @@ class CnvVcf(object):
                                for s in self.unaffected]
             else:
                 warn_non_standard_chromosome(record.chrom)
-                return False  # ignore non-standard chromosomes
+                return self._filter_record()  # ignore non-standard chromosomes
         if all(cnv_type_from_record(record, s, p) == self.cnv_type
                for s, p in zip(self.affected, ploidies)):
             if any(cnv_type_from_record(record, u) == self.cnv_type
                    for u, p in zip(self.unaffected, un_ploidies)):
                 if self._unaffected_with_same_ploidy(record):
-                    self.records_filtered += 1
-                    return False
+                    return self._filter_record()
+            if self.info_filter is not None:
+                if all(self.info_filter.filter(record)):
+                    return self._filter_record()
+            if self.sample_filter is not None:
+                if all(all(self.sample_filter.filter(record, x)) for x in
+                       self.affected):
+                    # ALL affected samples fail - should this be any?
+                    return self._filter_record()
             if self._cnv_filter_matches(record):
-                self.records_filtered += 1
-                return False
+                return self._filter_record()
             return True
-        self.records_filtered += 1
-        return False
+        return self._filter_record()
 
     def _unaffected_with_same_ploidy(self, record):
         if record.info['SVTYPE'] == 'CNV':
