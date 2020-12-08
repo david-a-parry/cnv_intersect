@@ -113,6 +113,14 @@ class CnvFromVcf(Cnv):
                                                     self.records)
             else:
                 smp2cn[s]['total_bin_counts'] = None
+            for qs in ['QS', 'GQ']:
+                if all(qs in self.records[i].samples[s] for i in
+                       range(len(self.records))):
+                    smp2cn[s]['mean_quality_score'] = sum(
+                        x.samples[s][qs] for x in
+                        self.records)/len(self.records)
+                    break
+                smp2cn[s]['mean_quality_score'] = None
         return smp2cn
 
     def _copy_number_from_record(self, record, sample, ploidy=2):
