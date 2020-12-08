@@ -60,12 +60,15 @@ def get_argparser():
     parser.add_argument('--info_filters', metavar='FIELD OP VALUE', nargs='+',
                         help='''Custom filter expressions for filtering on
                         fields in the INFO field of each record. Must be in the
-                        format '<INFO_FIELD> <comparator> <value>'. Variants
-                        will be retained if they meet the given criteria. For
-                        example, to only keep records with a QD score greater
-                        than 4, you would pass the expression "QD > 4". To only
-                        keep records with the "DB" flag present you would pass
-                        the expression "DB == True".
+                        format '<INFO_FIELD> <comparator> <value>
+                        [<cnv_type>]'. Variants will be retained if they meet
+                        the given criteria. For example, to only keep records
+                        with a QD score greater than 4, you would pass the
+                        expression "QD > 4". To only keep records with the "DB"
+                        flag present you would pass the expression "DB ==
+                        True". You may optionally add either 'GAIN' or 'LOSS'
+                        as a fourth field to only apply a filter to one class
+                        of CNVs (e.g. 'GCF > 0.8 LOSS').
 
                         Standard python style operators (">", "<", ">=", "<=",
                         "==", "!=") are supported. Comparisons will be
@@ -76,12 +79,13 @@ def get_argparser():
                         nargs='+', help='''Custom filter expressions for
                         filtering on individual sample genotype fields of each
                         record. Must be in the format '<FORMAT_FIELD>
-                        <comparator> <value>'. Variants will be retained if
-                        they meet the given criteria in all (affected) samples.
-                        For example, to only keep records with a BC value
-                        greater than 20, you would pass the expression "BC >
-                        20". Standard python style operators are supported as
-                        detailed in the --info_filters option.''')
+                        <comparator> <value> [<cnv_type>]'. Variants will be
+                        retained if they meet the given criteria in all
+                        (affected) samples. For example, to only keep records
+                        with a BC value greater than 20, you would pass the
+                        expression "BC > 20". Standard python style operators
+                        are supported as detailed in the --info_filters
+                        option.''')
     parser.add_argument('--debug', action='store_true', help=argparse.SUPPRESS)
     return parser
 

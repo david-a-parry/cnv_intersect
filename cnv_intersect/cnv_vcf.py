@@ -287,14 +287,25 @@ class CnvVcf(object):
         split_filters = []
         for expression in filters:
             exp = expression.split()
-            if len(exp) != 3:
+            if len(exp) < 3 or len(exp) > 4:
                 raise ValueError(
                     "--info_filters/--sample_filters must consist of three " +
-                    "quoted values separated by whitespace - for example: " +
-                    "'QS > 20' The provided expression '{}' is invalid."
-                    .format(expression))
-            split_filters.append(exp)
-        return filter_class(vcf=self.vcf, filters=split_filters)
+                    "or four quoted values separated by whitespace - for " +
+                    "example: 'QS > 20' or 'DHFFC < 0.7 LOSS'. The provided " +
+                    "expression '{}' is invalid.".format(expression))
+            if len(exp) == 3:
+                split_filters.append(exp)
+            else:
+                if exp[3] not in valid_cnv_types:
+                    raise ValueError(
+                        "CNV type '{}' in filter expression ".format(exp[3]) +
+                        "'{}' not recognised. ".format(expression) +
+                        "Valid CNV values are 'LOSS' or 'GAIN'.")
+                if exp[3] == self.cnv_type:
+                    split_filters.append(exp[:3])
+        if split_filters:
+            return filter_class(vcf=self.vcf, filters=split_filters)
+        return None
 
     def _filter_record(self):
         self.records_filtered += 1
