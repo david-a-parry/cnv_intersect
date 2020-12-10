@@ -20,6 +20,27 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 
+def get_contig_order(vcf):
+    if vcf.index is not None:
+        return dict(vcf.index)
+    contigs = []
+    prev_contig = None
+    prev_pos = None
+    not_sorted_err = ValueError("Input file '{}' is not sorted ".format(vcf) +
+                                "- exiting!")
+    for record in vcf:
+        if record.chrom not in contigs:
+            contigs.append(record.chrom)
+        elif prev_contig is not None and record.chrom != prev_contig:
+            raise not_sorted_err
+        elif prev_pos is not None and prev_pos > record.pos:
+            raise not_sorted_err
+        prev_contig = record.chrom
+        prev_pos = record.pos
+    vcf.reset()
+    return dict((k, n) for n, k in enumerate(contigs))
+
+
 def warn_non_standard_chromosome(chrom):
     if chrom not in warned_chroms:
         logger.warn("Ignoring non-standard chromosome '{}'".format(chrom))

@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+import argparse
+import logging
+import pysam
+import sys
+from cnv_intersect.cnv_sv_merger import CnvSvMerger
+
+logger = logging.getLogger("CNV Merger")
+
+
+def get_argparser():
+    parser = argparse.ArgumentParser(
+        description='Generate VCF of overlapping CNVs from Canvas called VCF')
+    parser.add_argument('--canvas', metavar='VCF', required=True, help='''Input
+                        VCF files with Canvas CNV calls.''')
+    parser.add_argument('--manta', metavar='VCF', required=True, help='''Input
+                        VCF files with MANTA SV calls.''')
+    parser.add_argument('-o', '--output', metavar='VCF/BCF output',
+                        help='''Output file for intersected calls. Default is
+                        STDOUT.''')
+    parser.add_argument('--minimum_cnv_length', type=float, metavar='MIN',
+                        help='''Set a minimum length cutoff. CNVs shorter than
+                        this value will be ignored.''')
+    parser.add_argument('--maximum_cnv_length', type=float, metavar='MAX',
+                        help='''Set a maximum length cutoff. CNVs longer than
+                        this value will be ignored.''')
+    parser.add_argument('--pass_filters', action='store_true', help='''Ignore
+                        CNVs without a PASS filter field.''')
+    parser.add_argument('-x', '--overlap_fraction', type=float, default=0.8,
+                        metavar='FRAC', help='''Minimum fraction overlap of
+                        CNV and SV variants required in order to merge.
+                        Default=0.8.''')
+    parser.add_argument('--info_filters', metavar='FIELD OP VALUE CALLER',
+                        nargs='+', help='''Custom filter expressions for
+                        filtering on fields in the INFO field of each record.
+                        Must be in the format '<INFO_FIELD> <comparator>
+                        <value> <manta|canvas> [<cnv_type>]'. Variants will be
+                        retained if they meet the given criteria. For example,
+                        to only keep records with a QD score greater than 4,
+                        you would pass the expression "QD > 4". To only keep
+                        records with the "DB" flag present you would pass the
+                        expression "DB == True". You may optionally add either
+                        'GAIN' or 'LOSS' as a fourth field to only apply a
+                        filter to one class of CNVs (e.g. 'GCF > 0.8 LOSS').
+
+                        Standard python style operators (">", "<", ">=", "<=",
+                        "==", "!=") are supported. Comparisons will be
+                        performed using the types specified for the given field
+                        in the VCF header (e.g. Float, Integer or String) or as
+                        booleans for Flags.''')
+    parser.add_argument('--sample_filters', metavar='FIELD OP VALUE CALLER',
+                        nargs='+', help='''Custom filter expressions for
+                        filtering on individual sample genotype fields of each
+                        record. Must be in the format '<FORMAT_FIELD>
+                        <comparator> <value> <manta|canvas> [<cnv_type>]'.
+                        Variants will be retained if they meet the given
+                        criteria in all (affected) samples. For example, to
+                        only keep records with a BC value greater than 20, you
+                        would pass the expression "BC > 20". Standard python
+                        style operators are supported as detailed in the
+                        --info_filters
+                        option.''')
+    parser.add_argument('--debug', action='store_true', help=argparse.SUPPRESS)
+    return parser
+
+
+def _parse_expressions(expressions):
+    filter_expressions = {'canvas': [], 'manta': []}
+    if expressions is None:
+        return filter_expressions
+    for exp in expressions:
+        parts = exp.split()
+        if len(parts) < 4 or parts[3].lower() not in filter_expressions:
+            raise ValueError("Invalid filter expression: {}\n".format(exp) +
+                             "Expressions must consist of at least four " +
+                             "whitespace separated values with the fourth " +
+                             "value being either 'Canvas' or 'Manta'")
+        genotyper = parts[3].lower()
+        expression = parts[:3]
+        if len(parts) > 4:
+            expression.append(parts[4])
+        filter_expressions[genotyper].append(expression)
+    return filter_expressions
+
+
+def parse_filter_expressions(info_filters, sample_filters):
+    filters = {'canvas': {'info': [], 'format': []},
+               'manta': {'info': [], 'format': []}}
+    info_expressions = _parse_expressions(info_filters)
+    for genotyper in info_expressions:
+        filters[genotyper]['info'] = info_expressions[genotyper]
+    format_expressions = _parse_expressions(sample_filters)
+    for genotyper in format_expressions:
+        filters[genotyper]['format'] = format_expressions[genotyper]
+    return filters
+
+
+def main(canvas, manta, output=None, pass_filters=False, overlap_fraction=0.8,
+         minimum_cnv_length=None, maximum_cnv_length=None, info_filters=[],
+         sample_filters=[], debug=False):
+    if debug:
+        logger.set_level(logging.DEBUG)
+    if output is None:
+        output = '-'
+    filter_expressions = parse_filter_expressions(info_filters, sample_filters)
+    with pysam.VariantFile(canvas) as canvas_vcf, \
+         pysam.VariantFile(manta) as manta_vcf:
+        merger = CnvSvMerger(canvas=canvas_vcf,
+                             manta=manta_vcf,
+                             minimum_overlap=overlap_fraction,
+                             minimum_length=minimum_cnv_length,
+                             maximum_length=maximum_cnv_length,
+                             pass_filters=pass_filters,
+                             manta_filters=filter_expressions['manta'],
+                             canvas_filters=filter_expressions['canvas'])
+        writer = pysam.VariantFile(output, header=merger.header, mode='w')
+        writer.header.add_meta('combine_canvas_and_manta',
+                               '"{}"'.format(' '.join(sys.argv)))
+        for merged_record in merger:
+            writer.write(merged_record)
+    writer.close()
+
+
+if __name__ == '__main__':
+    parser = get_argparser()
+    args = parser.parse_args()
+    main(**vars(args))
+    
