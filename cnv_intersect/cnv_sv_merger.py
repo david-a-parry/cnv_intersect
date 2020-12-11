@@ -260,6 +260,12 @@ class CnvSvMerger(object):
         return contig_order_canvas
 
     def _combine_headers(self):
+        for k, v in ((k, v) for k, v in self.canvas.header.filters.items() if k
+                     not in self.manta.header.filters):
+            self.manta.header.filters.add(k,
+                                          None,
+                                          None,
+                                          v.description)
         for k, v in ((k, v) for k, v in self.canvas.header.info.items() if k
                      not in self.manta.header.info):
             self.manta.header.info.add(k,
@@ -351,9 +357,12 @@ class CnvSvMerger(object):
     def _new_record_from_template(self, rec):
         '''Necessary due to potential weirdness with headers'''
         new_rec = self.header.new_record()
-        for att in ['alts', 'chrom', 'id', 'qual', 'ref', 'stop']:
+        for att in ['alts', 'chrom', 'id', 'qual', 'ref']:
             setattr(new_rec, att, getattr(rec, att))
         new_rec.pos = max(1, rec.pos)  # pysam errors when pos is 0
+        new_rec.stop = rec.stop  # needs to be set AFTER pos
+        for k in rec.filter.keys():
+            new_rec.filter.add(k)
         for k, v in rec.info.items():
             new_rec.info[k] = v
         for s in rec.samples:
