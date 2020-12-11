@@ -341,7 +341,7 @@ class CnvSvMerger(object):
         new_rec = self.header.new_record()
         for att in ['alts', 'chrom', 'id', 'qual', 'ref', 'stop']:
             setattr(new_rec, att, getattr(rec, att))
-        new_rec.pos = max(1, new_rec.pos)  # pysam errors when pos is 0
+        new_rec.pos = max(1, rec.pos)  # pysam errors when pos is 0
         for k, v in rec.info.items():
             new_rec.info[k] = v
         for s in rec.samples:
