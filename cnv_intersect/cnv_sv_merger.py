@@ -33,6 +33,15 @@ class CnvSvMerger(object):
         self._canvas_finished = False
         self._manta_finished = False
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):
+        self.canvas.close()
+        self.manta.close()
+        self.canvas_iter.close()
+        self.manta_iter.close()
+
     def __iter__(self):
         return self
 
