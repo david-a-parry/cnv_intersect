@@ -11,7 +11,7 @@ from cnv_intersect.cnv_vcf import cnv_type_from_record
 def get_options():
     parser = argparse.ArgumentParser(
         description='Output CNVs as BED format lines.')
-    parser.add_argument('vcfs', nargs='+')
+    parser.add_argument('vcfs', nargs='+', metavar='vcf')
     parser.add_argument('--ped', help='''PED file providing sample genders.''')
     parser.add_argument('--pass_filters', action='store_true', help='''Only
                         output variants with PASS in the FILTER field.''')
