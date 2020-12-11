@@ -19,6 +19,8 @@ class CnvSvMerger(object):
                              " must be from the same set of samples.")
         self.canvas = canvas
         self.manta = manta
+        self.canvas_iter = canvas.copy()  # separate iterators required to
+        self.manta_iter = manta.copy()    # prevent moving position in original
         self.header = self._combine_headers()
         self.minimum_overlap = minimum_overlap
         self.minimum_length = minimum_length
@@ -62,12 +64,12 @@ class CnvSvMerger(object):
             if self.current_manta_record is None:
                 raise StopIteration
             record = self.current_manta_record
-            vcf = self.canvas
+            vcf_iter = self.canvas_iter
         elif self.current_manta_record is None:
             record = self.current_canvas_record
-            vcf = self.manta
+            vcf_iter = self.manta_iter
         else:
-            record, vcf = self._get_5prime_record()
+            record, vcf_iter = self._get_5prime_record()
         if record is self.current_manta_record:
             try:
                 self.current_manta_record = self._next_manta_cnv()
@@ -79,7 +81,7 @@ class CnvSvMerger(object):
             except StopIteration:
                 self.current_canvas_record = None
         return self._overlaps_from_record(record,
-                                          vcf)
+                                          vcf_iter)
 
     def _next_canvas_non_ref(self):
         for record in self.canvas:
@@ -127,8 +129,8 @@ class CnvSvMerger(object):
         manta_start = self.current_manta_record.start
         if (canvas_chrom == manta_chrom and canvas_start <= manta_start) or \
            canvas_chrom < manta_chrom:
-            return (self.current_canvas_record, self.manta)
-        return (self.current_manta_record, self.canvas)
+            return (self.current_canvas_record, self.manta_iter)
+        return (self.current_manta_record, self.canvas_iter)
 
     def _cnv_type(self, record):
         if record.id is not None:
