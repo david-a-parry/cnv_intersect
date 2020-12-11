@@ -150,6 +150,7 @@ class CnvSvMerger(object):
     def _overlaps_from_record(self, record, other_vcf):
         if record.chrom != self._current_chrom:
             self._written_variants = []
+            self._current_chrom = record.chrom
         cnv_type = self._cnv_type(record)
         var_iter = other_vcf.fetch(record.chrom, max(0, record.start),
                                    record.stop)
