@@ -19,16 +19,23 @@ def get_options():
 
 
 def output_line(buff, cnv_type, sample):
-    start = min(x.start for x in buff)
-    stop = max(x.stop for x in buff)
-    cn = buff[0].samples[sample]['CN']
-    print("\t".join(str(x) for x in (buff[0].chrom,
+    start = min(x[0].start for x in buff)
+    stop = max(x[0].stop for x in buff)
+    cn = buff[0][1]
+    print("\t".join(str(x) for x in (buff[0][0].chrom,
                                      max(0, start),
                                      stop,
                                      cnv_type,
                                      sample,
                                      cn,
                                      len(buff))))
+
+
+def sample_copy_number(record, sample, cnv_type, ploidy=2):
+    if 'CN' in record.format:
+        return record.samples[sample]['CN']
+    adjust = -1 if cnv_type == 'LOSS' else 1
+    return ploidy + record.samples[sample].allele_indices.count(1) * adjust
 
 
 def main(vcfs, ped=None, pass_filters=False):
@@ -67,18 +74,20 @@ def main(vcfs, ped=None, pass_filters=False):
                 for i in range(len(samples)):
                     if cnv_types[i] == 'REF':
                         continue
-                    cn = record.samples[samples[i]]['CN']
+                    cn = sample_copy_number(record, samples[i], cnv_types[i],
+                                            ploidies[i])
                     buff = sample_buffer[cnv_types[i]][samples[i]]
                     if not buff:
-                        buff.append(record)
-                    elif (cn == buff[0].samples[samples[i]]['CN']
-                          and record.stop > buff[-1].start
-                          and record.start < buff[-1].stop):  # overlaps
-                        buff.append(record)
+                        buff.append((record, cn))
+                    elif (cn == buff[0][1]
+                          and record.stop > buff[-1][0].start
+                          and record.start < buff[-1][0].stop):  # overlaps
+                        buff.append((record, cn))
                     else:  # no overlap
                         if buff:
                             output_line(buff, cnv_types[i], samples[i])
-                        sample_buffer[cnv_types[i]][samples[i]] = [record]
+                        sample_buffer[cnv_types[i]][samples[i]] = [(record,
+                                                                    cn)]
         for cnv_type, s_dict in sample_buffer.items():
             for sample, buff in s_dict.items():
                 if buff:
